@@ -1,0 +1,125 @@
+{% load static %}
+{% load socialaccount %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{% block title %}GT AI Calendar{% endblock title %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Fonts & Styles -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
+    
+</head>
+<body>
+
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container">
+            <!-- Title Bar -->
+            <a class="navbar-brand fw-bold text-primary" href="{% url 'home.index' %}">
+                <i class="fa-solid fa-calendar-days me-2"></i> GT AI Calendar
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    {% for name, url_name in nav_items %}
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" href="{% url url_name %}">{{ name }}</a>
+                        </li>
+                    {% endfor %}
+
+                    <div class="vr bg-secondary mx-2 d-none d-lg-block"></div>
+
+                    {% if user.is_authenticated %}
+                        <li class="nav-item">
+                            <form method="post" action="{% url 'account_logout' %}">
+                                {% csrf_token %}
+                                <button class="nav-link btn btn-link text-dark" type="submit">Logout</button>
+                              </form>                              
+                        </li>
+                        <li class="nav-item">
+                            <span class="nav-link disabled">Hi, {{ user.first_name }}</span>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="btn btn-link nav-link text-dark p-0" href="{% provider_login_url 'google' %}">
+                                <i class="fab fa-google me-1"></i> Sign in with Google
+                            </a>                                                    
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container my-5">
+        {% block content %}
+        {% endblock content %}
+    </main>    
+
+    <!-- Footer -->
+    <footer class="p-4 bg-light text-dark border-top mt-5">
+        <div class="container">
+            <div class="row mt-3">
+                <!-- About Section -->
+                <div class="col-md-6 mb-4">
+                    <h5><i class="fa-solid fa-calendar-check me-2"></i>About GT AI Calendar</h5>
+                    <hr />
+                    <p>
+                        GT AI Calendar helps students and faculty turn natural language into organized, synced calendar events. 
+                        Whether you're managing deadlines, meetings, or personal schedules, AI handles the logic — you stay in flow.
+                    </p>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="col-md-3 mb-4">
+                    <h5><i class="fa-solid fa-link me-2"></i>Quick Links</h5>
+                    <hr />
+                    <p><a class="nav-link text-dark" href="{% url 'home.index' %}">Home</a></p>
+                    <p>
+                    {% if user.is_authenticated %}
+                        <form method="post" action="{% url 'account_logout' %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-link nav-link text-dark p-0" style="text-decoration: none;">
+                                Logout
+                            </button>
+                        </form>
+                    {% else %}
+                        <p><a class="nav-link text-dark" href="{% provider_login_url 'google' %}">Sign in</a></p>
+                    {% endif %}
+                    </p>
+                    <p><a class="nav-link text-dark" href="#">Contact</a></p>
+                </div>                
+                <!-- Contact Information -->
+                <div class="col-md-3 mb-4">
+                    <h5><i class="fa-solid fa-envelope-open-text me-2"></i>Contact</h5>
+                    <hr />
+                    <p><i class="fas fa-map-marker-alt me-2"></i> Georgia Tech, Atlanta, GA</p>
+                    <p><i class="fas fa-envelope me-2"></i> ai_calendar@gatech.edu</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Footer Bottom -->
+    <section class="p-3 bg-white text-muted border-top text-center">
+        <div class="container d-flex justify-content-between flex-wrap">
+            <div>
+                <small>Designed by <a href="https://www.linkedin.com/in/xingyu-zhai-723766293/" target="_blank">John Zhai</a></small>
+            </div>
+            <div>
+                <small>© 2025 GT AI Calendar</small>
+            </div>
+        </div>
+    </section>
+
+</body>
+</html>

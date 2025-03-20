@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load account %}
+
+{% block title %}Sign In via {{ provider.name }}{% endblock %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <h2 class="mb-4">Sign In with {{ provider.name }}</h2>
+    <p class="text-muted mb-4">
+        You're about to sign in using your {{ provider.name }} account.
+    </p>
+
+    <form method="post" action="">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary">
+            <i class="fab fa-{{ provider.id }} me-2"></i> Continue with {{ provider.name }}
+        </button>
+    </form>
+    
+</div>
+{% endblock %}
