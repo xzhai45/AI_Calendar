@@ -54,9 +54,14 @@ def index(request):
                         'summary': event.get('summary', 'No Title'),
                         'start': event.get('start', {}).get('dateTime') or event.get('start', {}).get('date'),
                         'end': event.get('end', {}).get('dateTime') or event.get('end', {}).get('date'),
+                        'location': event.get('location', ''),
+                        'description': event.get('description', ''),
+                        'creator': event.get('creator', {}).get('email', ''),
+                        'calendarId': calendar_id,
                         'backgroundColor': calendar_entry.get('backgroundColor', '#3788d8'),
-                        'calendarId': calendar_id
+                        'htmlLink': event.get('htmlLink', ''),
                     })
+
 
         except Exception as e:
             print("❌ Error fetching calendar data:", e)

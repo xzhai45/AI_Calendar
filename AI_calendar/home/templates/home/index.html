@@ -18,60 +18,119 @@
     </div>
     <pre>{{ events|safe }}</pre>
     <pre>{{ calendars|safe }}</pre>
-    {% if calendars %}
-        <form id="calendar-form">
-            {% for cal in calendars %}
-                <label>
-                    <input type="checkbox" name="calendars" value="{{ cal.id }}" checked>
-                    {{ cal.name }}
-                </label><br>
-            {% endfor %}
-        </form>
-    {% else %}
-        <p><em>No calendars found.</em></p>
-    {% endif %}
-        
-    {% if events %}
-        <div class="container mt-5">
-            <h3 class="mb-4">Your Upcoming Events</h3>
-            <div id="calendar"></div>
-        </div>
-    {% else %}
-        <div id="calendar"></div>
-        <p class="text-center mt-5">No events to display.</p>
-        
-    {% endif %}
+    <div class="container mt-5">
+        {% if calendars %}
+            <div class="row">
+                <!-- Calendar Selector -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">My Calendars</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="calendar-form">
+                                {% for cal in calendars %}
+                                    <div class="form-check">
+                                        <input class="form-check-input calendar-toggle" type="checkbox" name="calendars" value="{{ cal.id }}" checked>
+                                        <label class="form-check-label">{{ cal.name }}</label>
+                                    </div>
+                                {% endfor %}
+                            </form>
+                        </div>
+                    </div>
+                </div>
+    
+                <!-- Calendar View -->
+                <div class="col-md-8">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <div id="calendar"></div>
+                            {% if not events %}
+                                <p class="text-center mt-3">No events to display.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <p><em>No calendars found.</em></p>
+        {% endif %}
+    </div>
+    
 {% endblock %}
 
 {% block extra_js %}
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var calendarEl = document.getElementById('calendar');
-            if (calendarEl) {
-                var calendar = new FullCalendar.Calendar(calendarEl, {
-                    initialView: 'dayGridMonth',
-                    height: 'auto',
-                    headerToolbar: {
-                        left: 'prev,next today',
-                        center: 'title',
-                        right: 'dayGridMonth,timeGridWeek,listWeek'
-                    },
-                    events: [
-                        {% for event in events %}
-                            {
-                                title: "{{ event.summary|escapejs }}",
-                                start: "{{ event.start|escapejs }}",
-                                end: "{{ event.end|escapejs }}",
-                                backgroundColor: "{{ event.backgroundColor|default:'#3788d8' }}"
-                            }{% if not forloop.last %},{% endif %}
-                        {% endfor %}
-                    ]
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const allEvents = [
+            {% for event in events %}
+                {
+                    title: "{{ event.summary|escapejs }}",
+                    start: "{{ event.start|escapejs }}",
+                    end: "{{ event.end|escapejs }}",
+                    backgroundColor: "{{ event.backgroundColor|default:'#3788d8' }}",
+                    calendarId: "{{ event.calendarId }}",
+                    location: "{{ event.location|escapejs }}",
+                    description: "{{ event.description|escapejs }}",
+                    creator: "{{ event.creator|escapejs }}",
+                    htmlLink: "{{ event.htmlLink|escapejs }}"
+                }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        const calendarEl = document.getElementById('calendar');
+        const checkboxes = document.querySelectorAll('.calendar-toggle');
+
+        if (calendarEl) {
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                height: 'auto',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                events: allEvents,
+
+                eventClick: function(info) {
+                    const event = info.event.extendedProps;
+                    const title = info.event.title;
+                    const start = info.event.start.toLocaleString();
+                    const end = info.event.end ? info.event.end.toLocaleString() : '';
+                    const location = event.location || 'N/A';
+                    const description = event.description || 'N/A';
+                    const creator = event.creator || 'N/A';
+                    const htmlLink = event.htmlLink;
+
+                    alert(
+                        `Title: ${title}\nStart: ${start}\nEnd: ${end}\nLocation: ${location}\nDescription: ${description}\nCreator: ${creator}`
+                    );
+
+                    // Open Google Calendar link
+                    // window.open(htmlLink, '_blank');
+                }
+            });
+
+            calendar.render();
+
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    const selectedCalendars = Array.from(checkboxes)
+                        .filter(c => c.checked)
+                        .map(c => c.value);
+
+                    const filteredEvents = allEvents.filter(ev => 
+                        selectedCalendars.includes(ev.calendarId)
+                    );
+
+                    calendar.removeAllEvents();
+                    calendar.addEventSource(filteredEvents);
                 });
-
-                calendar.render();
-            }
-        });
-    </script>
+            });
+        }
+    });
+</script>
 {% endblock %}
+
