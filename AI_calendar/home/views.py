@@ -60,6 +60,8 @@ def index(request):
 
         except Exception as e:
             print("❌ Error fetching calendar data:", e)
+            print("Session keys:", request.session.keys())
+
 
     return render(request, 'home/index.html', {
         'events': events,
