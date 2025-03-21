@@ -17,22 +17,33 @@
         <p>Your AI-powered scheduling assistant</p>
     </div>
     <pre>{{ events|safe }}</pre>
-
-
+    <pre>{{ calendars|safe }}</pre>
+    {% if calendars %}
+        <form id="calendar-form">
+            {% for cal in calendars %}
+                <label>
+                    <input type="checkbox" name="calendars" value="{{ cal.id }}" checked>
+                    {{ cal.name }}
+                </label><br>
+            {% endfor %}
+        </form>
+    {% else %}
+        <p><em>No calendars found.</em></p>
+    {% endif %}
+        
     {% if events %}
         <div class="container mt-5">
             <h3 class="mb-4">Your Upcoming Events</h3>
             <div id="calendar"></div>
         </div>
     {% else %}
-        <p class="text-center mt-5">No events to display.</p>
         <div id="calendar"></div>
+        <p class="text-center mt-5">No events to display.</p>
         
     {% endif %}
 {% endblock %}
 
 {% block extra_js %}
-    <!-- FullCalendar JS -->
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 
     <script>
@@ -51,8 +62,9 @@
                         {% for event in events %}
                             {
                                 title: "{{ event.summary|escapejs }}",
-                                start: "{{ event.start.dateTime|default:event.start.date }}",
-                                end: "{{ event.end.dateTime|default:event.end.date }}"
+                                start: "{{ event.start|escapejs }}",
+                                end: "{{ event.end|escapejs }}",
+                                backgroundColor: "{{ event.backgroundColor|default:'#3788d8' }}"
                             }{% if not forloop.last %},{% endif %}
                         {% endfor %}
                     ]
