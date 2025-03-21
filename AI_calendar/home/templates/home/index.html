@@ -36,10 +36,32 @@
                                     </div>
                                 {% endfor %}
                             </form>
+                        
+                            <button id="add-event-toggle" class="btn btn-outline-primary btn-sm mt-3 w-100">+ Add Event</button>
+                            <form id="manual-event-form" class="border p-3 rounded shadow-sm bg-light d-none">
+                                <div class="mb-2">
+                                    <input type="text" class="form-control form-control-sm" placeholder="Title" id="manual-title" required>
+                                </div>
+                                <div class="mb-2">
+                                    <input type="datetime-local" class="form-control form-control-sm" id="manual-start" required>
+                                </div>
+                                <div class="mb-2">
+                                    <input type="datetime-local" class="form-control form-control-sm" id="manual-end" required>
+                                </div>
+                                <div class="mb-2">
+                                    <input type="text" class="form-control form-control-sm" placeholder="Location" id="manual-location">
+                                </div>
+                                <div class="mb-2">
+                                    <input type="text" class="form-control form-control-sm" placeholder="Description" id="manual-description">
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-success w-100">Save</button>
+                            </form>
+
+
                         </div>
                     </div>
                 </div>
-    
+                
                 <!-- Calendar View -->
                 <div class="col-md-8">
                     <div class="card shadow-sm">
@@ -61,8 +83,23 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-
 <script>
+    function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Check if cookie string starts with name
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
     document.addEventListener('DOMContentLoaded', function () {
         const allEvents = [
             {% for event in events %}
@@ -82,9 +119,10 @@
 
         const calendarEl = document.getElementById('calendar');
         const checkboxes = document.querySelectorAll('.calendar-toggle');
+        let calendar = null;
 
         if (calendarEl) {
-            const calendar = new FullCalendar.Calendar(calendarEl, {
+            calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 height: 'auto',
                 headerToolbar: {
@@ -104,12 +142,12 @@
                     const creator = event.creator || 'N/A';
                     const htmlLink = event.htmlLink;
 
-                    alert(
-                        `Title: ${title}\nStart: ${start}\nEnd: ${end}\nLocation: ${location}\nDescription: ${description}\nCreator: ${creator}`
+                    const confirmDelete = confirm(
+                        `Title: ${title}\nStart: ${start}\nEnd: ${end}\nLocation: ${location}\nDescription: ${description}\nCreator: ${creator}\n\nDo you want to delete this event?`
                     );
-
-                    // Open Google Calendar link
-                    // window.open(htmlLink, '_blank');
+                    if (confirmDelete) {
+                        info.event.remove();
+                    }
                 }
             });
 
@@ -121,7 +159,7 @@
                         .filter(c => c.checked)
                         .map(c => c.value);
 
-                    const filteredEvents = allEvents.filter(ev => 
+                    const filteredEvents = allEvents.filter(ev =>
                         selectedCalendars.includes(ev.calendarId)
                     );
 
@@ -130,7 +168,82 @@
                 });
             });
         }
+
+        // Handle manual event form visibility
+        document.getElementById('add-event-toggle').addEventListener('click', function() {
+            document.getElementById('manual-event-form').classList.toggle('d-none');
+        });
+
+        // Handle manual event addition
+        const manualForm = document.getElementById('manual-event-form');
+        if (manualForm) {
+            manualForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                // Convert to RFC3339 (Google-friendly format)
+                function toRFC3339(localDateTime) {
+                    const date = new Date(localDateTime);
+                    return date.toISOString();  // Adds Z and time
+                }
+
+                const title = document.getElementById('manual-title').value;
+                const startRaw = document.getElementById('manual-start').value;
+                const endRaw = document.getElementById('manual-end').value;
+                const start = toRFC3339(startRaw);
+                const end = toRFC3339(endRaw);
+                const location = document.getElementById('manual-location').value;
+                const description = document.getElementById('manual-description').value;
+
+                const newEvent = {
+                    title,
+                    start,
+                    end,
+                    location,
+                    description,
+                    backgroundColor: '#5cb85c'
+                };
+
+                if (new Date(start) >= new Date(end)) {
+                    alert("❌ End time must be after start time.");
+                    return;
+                }
+
+                allEvents.push(newEvent);
+                calendar.addEvent(newEvent);
+
+                // Send to Django backend to sync with Google Calendar
+                fetch('/add-event/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: new URLSearchParams({
+                        title,
+                        start,
+                        end,
+                        location,
+                        description
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message) {
+                        alert("✅ Event added to Google Calendar!");
+                    } else if (data.error) {
+                        alert("❌ Failed: " + data.error);
+                    }
+                })
+                .catch(error => console.error("❌ Error adding event:", error));
+
+                // Hide form after submission
+                manualForm.classList.add('d-none');
+                manualForm.reset();
+            });
+
+        }
     });
 </script>
+
 {% endblock %}
 

@@ -30,7 +30,6 @@ LOGGING = {
     },
 }
 
-SOCIALACCOUNT_STORE_TOKENS = True
 
 
 GOOGLE_CLIENT_ID = config("GOOGLE_CLIENT_ID")
@@ -147,7 +146,7 @@ SOCIALACCOUNT_PROVIDERS = {
         'SCOPE': [
             'profile',
             'email',
-            'https://www.googleapis.com/auth/calendar.readonly',
+            'https://www.googleapis.com/auth/calendar',
         ],
         'AUTH_PARAMS': {
             'access_type': 'offline',
@@ -155,6 +154,7 @@ SOCIALACCOUNT_PROVIDERS = {
         }
     }
 }
+SOCIALACCOUNT_STORE_TOKENS = True
 
 
 
