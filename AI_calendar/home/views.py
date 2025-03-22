@@ -99,6 +99,39 @@ def add_event_to_google(request):
 
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
+def delete_event_from_google(request):
+    if request.method == "POST":
+        if not request.user.is_authenticated:
+            return JsonResponse({"error": "User not authenticated"}, status=403)
+
+        try:
+            body = json.loads(request.body)
+            event_id = body.get("eventId")
+            calendar_id = body.get("calendarId", "primary")
+
+            if not event_id:
+                return JsonResponse({"error": "Missing event ID"}, status=400)
+
+            token = SocialToken.objects.get(account__user=request.user, account__provider='google')
+            credentials = Credentials(
+                token=token.token,
+                refresh_token=token.token_secret,
+                token_uri='https://oauth2.googleapis.com/token',
+                client_id=settings.GOOGLE_CLIENT_ID,
+                client_secret=settings.GOOGLE_CLIENT_SECRET,
+                scopes=['https://www.googleapis.com/auth/calendar']
+            )
+
+            service = build('calendar', 'v3', credentials=credentials)
+            service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+            return JsonResponse({"message": "Event deleted"})
+
+        except Exception as e:
+            print("❌ Failed to delete event:", e)
+            return JsonResponse({"error": str(e)}, status=500)
+
+    return JsonResponse({"error": "Invalid request method"}, status=400)
+
 
 
 def index(request):
@@ -150,6 +183,7 @@ def index(request):
                         'calendarId': calendar_id,
                         'backgroundColor': calendar_entry.get('backgroundColor', '#3788d8'),
                         'htmlLink': event.get('htmlLink', ''),
+                        'googleEventId': event.get('id'),
                     })
 
 
