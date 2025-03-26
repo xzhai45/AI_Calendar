@@ -1,122 +1,125 @@
 {% extends "base.html" %}
-
 {% load static %}
 {% load i18n %}
 
 {% block title %}Home | GT AI Calendar{% endblock title %}
 
 {% block extra_css %}
-    <!-- FullCalendar CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
-
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
 {% endblock %}
 
 {% block content %}
-    <div class="container mt-5 text-center">
-        <h1>Welcome to GT AI Calendar</h1>
-        <p>Your AI-powered scheduling assistant</p>
-    </div>
-    <pre>{{ events|safe }}</pre>
-    <pre>{{ calendars|safe }}</pre>
-    <div class="container mt-5">
-        {% if calendars %}
-            <div class="row">
-                <!-- Calendar Selector -->
-                <div class="col-md-4">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">My Calendars</h5>
-                        </div>
-                        <div class="card-body">
-                            <form id="calendar-form">
-                                {% for cal in calendars %}
-                                    <div class="form-check">
-                                        <input class="form-check-input calendar-toggle" type="checkbox" name="calendars" value="{{ cal.id }}" checked>
-                                        <label class="form-check-label">{{ cal.name }}</label>
-                                    </div>
-                                {% endfor %}
-                            </form>
-                        
-                            <button id="add-event-toggle" class="btn btn-outline-primary btn-sm mt-3 w-100">+ Add Event</button>
-                            <form id="manual-event-form" class="border p-3 rounded shadow-sm bg-light d-none">
-                                <div class="mb-2">
-                                    <input type="text" class="form-control form-control-sm" placeholder="Title" id="manual-title" required>
-                                </div>
-                                <div class="mb-2">
-                                    <input type="datetime-local" class="form-control form-control-sm" id="manual-start" required>
-                                </div>
-                                <div class="mb-2">
-                                    <input type="datetime-local" class="form-control form-control-sm" id="manual-end" required>
-                                </div>
-                                <div class="mb-2">
-                                    <input type="text" class="form-control form-control-sm" placeholder="Location" id="manual-location">
-                                </div>
-                                <div class="mb-2">
-                                    <input type="text" class="form-control form-control-sm" placeholder="Description" id="manual-description">
-                                </div>
-                                <button type="submit" class="btn btn-sm btn-success w-100">Save</button>
-                            </form>
+<div class="container mt-5 text-center">
+    <h1>Welcome to GT AI Calendar</h1>
+    <p>Your AI-powered scheduling assistant</p>
+</div>
+<div class="container mt-3">
+    <details>
+        <summary class="text-muted">Debug Info (click to expand)</summary>
+        <pre>{{ events|safe }}</pre>
+        <pre>{{ calendars|safe }}</pre>
+    </details>
+</div>
 
-
-                        </div>
-                    </div>
+<div class="container mt-5">
+    {% if calendars %}
+    <div class="row">
+        <!-- Calendar Selector -->
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">My Calendars</h5>
                 </div>
-                
-                <!-- Calendar View -->
-                <div class="col-md-8">
-                    <div class="card shadow-sm">
-                        <div class="card-body">
-                            <div id="calendar"></div>
-                            {% if not events %}
-                                <p class="text-center mt-3">No events to display.</p>
-                            {% endif %}
+                <div class="card-body">
+                    <form id="calendar-form">
+                        {% for cal in calendars %}
+                        <div class="form-check">
+                            <input class="form-check-input calendar-toggle" type="checkbox" name="calendars"
+                                value="{{ cal.id }}" checked>
+                            <label class="form-check-label">{{ cal.name }}</label>
                         </div>
-                    </div>
+                        {% endfor %}
+                    </form>
+
+                    <button id="add-event-toggle" class="btn btn-outline-primary btn-sm mt-3 w-100">+ Add Event</button>
+                    <form id="manual-event-form" class="border p-3 rounded shadow-sm bg-light d-none">
+                        <div class="mb-2">
+                            <input type="text" class="form-control form-control-sm" placeholder="Title" id="manual-title"
+                                required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="datetime-local" class="form-control form-control-sm" id="manual-start" required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="datetime-local" class="form-control form-control-sm" id="manual-end" required>
+                        </div>
+                        <div class="mb-2">
+                            <input type="text" class="form-control form-control-sm" placeholder="Location"
+                                id="manual-location">
+                        </div>
+                        <div class="mb-2">
+                            <input type="text" class="form-control form-control-sm" placeholder="Description"
+                                id="manual-description">
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-success w-100">Save</button>
+                    </form>
                 </div>
             </div>
-        {% else %}
-            <p><em>No calendars found.</em></p>
-        {% endif %}
+        </div>
+
+        <!-- Calendar View -->
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div id="calendar"></div>
+                    {% if not events %}
+                    <p class="text-center mt-3">No events to display.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
-    
+    {% else %}
+    <p><em>No calendars found.</em></p>
+    {% endif %}
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 <script>
     function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            // Check if cookie string starts with name
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
             }
         }
+        return cookieValue;
     }
-    return cookieValue;
-}
 
     document.addEventListener('DOMContentLoaded', function () {
         const allEvents = [
             {% for event in events %}
-                {
-                    title: "{{ event.summary|escapejs }}",
-                    start: "{{ event.start|escapejs }}",
-                    end: "{{ event.end|escapejs }}",
-                    backgroundColor: "{{ event.backgroundColor|default:'#3788d8' }}",
-                    extendedProps: {
-                        calendarId: "{{ event.calendarId }}",
-                        location: "{{ event.location|escapejs }}",
-                        description: "{{ event.description|escapejs }}",
-                        creator: "{{ event.creator|escapejs }}",
-                        htmlLink: "{{ event.htmlLink|escapejs }}",
-                        googleEventId: "{{ event.googleEventId|escapejs }}"
-                    }
-                }{% if not forloop.last %},{% endif %}
+            {
+                title: "{{ event.summary|escapejs }}",
+                start: "{{ event.start|escapejs }}",
+                end: "{{ event.end|escapejs }}",
+                backgroundColor: "{{ event.backgroundColor|default:'#3788d8' }}",
+                calendarId: "{{ event.calendarId|escapejs }}",
+                extendedProps: {
+                    location: "{{ event.location|escapejs }}",
+                    description: "{{ event.description|escapejs }}",
+                    creator: "{{ event.creator|escapejs }}",
+                    htmlLink: "{{ event.htmlLink|escapejs }}",
+                    googleEventId: "{{ event.googleEventId|escapejs }}"
+                }
+            }{% if not forloop.last %},{% endif %}
             {% endfor %}
         ];
 
@@ -135,19 +138,20 @@
                 },
                 events: allEvents,
 
-                eventClick: function(info) {
-                    const event = info.event.extendedProps;
+                eventClick: function (info) {
+                    const props = info.event.extendedProps;
                     const title = info.event.title;
                     const start = info.event.start.toLocaleString();
-                    const end = info.event.end ? info.event.end.toLocaleString() : '';
-                    const location = event.location || 'N/A';
-                    const description = event.description || 'N/A';
-                    const creator = event.creator || 'N/A';
-                    const htmlLink = event.htmlLink;
+                    const end = info.event.end ? info.event.end.toLocaleString() : 'N/A';
+                    const location = props.location || 'N/A';
+                    const description = props.description || 'N/A';
+                    const creator = props.creator || 'N/A';
+                    const htmlLink = props.htmlLink || '#';
 
                     const confirmDelete = confirm(
                         `Title: ${title}\nStart: ${start}\nEnd: ${end}\nLocation: ${location}\nDescription: ${description}\nCreator: ${creator}\n\nDo you want to delete this event?`
                     );
+
                     if (confirmDelete) {
                         fetch('/delete-event/', {
                             method: 'POST',
@@ -156,25 +160,24 @@
                                 'X-CSRFToken': getCookie('csrftoken')
                             },
                             body: JSON.stringify({
-                                eventId: info.event.extendedProps.googleEventId,  // ✅ must come from extendedProps
-                                calendarId: info.event.extendedProps.calendarId || "primary"
+                                eventId: props.googleEventId,
+                                calendarId: props.calendarId || "primary"
                             })
                         })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.message) {
-                                info.event.remove();  // Remove from UI
-                                alert("✅ Event deleted from Google Calendar.");
-                            } else {
-                                alert("❌ Failed to delete event: " + data.error);
-                            }
-                        })
-                        .catch(error => {
-                            console.error("❌ Delete error:", error);
-                            alert("❌ Error deleting event.");
-                        });
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.message) {
+                                    info.event.remove();
+                                    alert("✅ Event deleted from Google Calendar.");
+                                } else {
+                                    alert("❌ Failed to delete event: " + data.error);
+                                }
+                            })
+                            .catch(error => {
+                                console.error("❌ Delete error:", error);
+                                alert("❌ Error deleting event.");
+                            });
                     }
-
                 }
             });
 
@@ -185,32 +188,25 @@
                     const selectedCalendars = Array.from(checkboxes)
                         .filter(c => c.checked)
                         .map(c => c.value);
-
-                    const filteredEvents = allEvents.filter(ev =>
-                        selectedCalendars.includes(ev.calendarId)
-                    );
-
+                    const filteredEvents = allEvents.filter(ev => selectedCalendars.includes(ev.calendarId));
                     calendar.removeAllEvents();
                     calendar.addEventSource(filteredEvents);
                 });
             });
         }
 
-        // Handle manual event form visibility
-        document.getElementById('add-event-toggle').addEventListener('click', function() {
+        document.getElementById('add-event-toggle').addEventListener('click', function () {
             document.getElementById('manual-event-form').classList.toggle('d-none');
         });
 
-        // Handle manual event addition
         const manualForm = document.getElementById('manual-event-form');
         if (manualForm) {
             manualForm.addEventListener('submit', function (e) {
                 e.preventDefault();
 
-                // Convert to RFC3339 (Google-friendly format)
                 function toRFC3339(localDateTime) {
                     const date = new Date(localDateTime);
-                    return date.toISOString();  // Adds Z and time
+                    return date.toISOString();
                 }
 
                 const title = document.getElementById('manual-title').value;
@@ -221,56 +217,52 @@
                 const location = document.getElementById('manual-location').value;
                 const description = document.getElementById('manual-description').value;
 
-                const newEvent = {
-                    title,
-                    start,
-                    end,
-                    location,
-                    description,
-                    backgroundColor: '#5cb85c'
-                };
-
                 if (new Date(start) >= new Date(end)) {
                     alert("❌ End time must be after start time.");
                     return;
                 }
 
-                allEvents.push(newEvent);
-                calendar.addEvent(newEvent);
+                const eventPayload = {
+                    title,
+                    start,
+                    end,
+                    location,
+                    description
+                };
 
-                // Send to Django backend to sync with Google Calendar
                 fetch('/add-event/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: new URLSearchParams({
-                        title,
-                        start,
-                        end,
-                        location,
-                        description
-                    })
+                    body: new URLSearchParams(eventPayload)
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.message) {
                         alert("✅ Event added to Google Calendar!");
+
+                        // Hide and reset the form
+                        manualForm.classList.add('d-none');
+                        manualForm.reset();
+
+                        // Reload after short delay
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);  // wait 1 second
                     } else if (data.error) {
                         alert("❌ Failed: " + data.error);
                     }
                 })
-                .catch(error => console.error("❌ Error adding event:", error));
+                .catch(error => {
+                    console.error("❌ Network error adding event:", error);
+                    alert("❌ Network error. Please try again.");
+                });
 
-                // Hide form after submission
-                manualForm.classList.add('d-none');
-                manualForm.reset();
+
             });
-
         }
     });
 </script>
-
 {% endblock %}
-
