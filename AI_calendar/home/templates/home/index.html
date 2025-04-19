@@ -63,6 +63,26 @@
                         </div>
                         <button type="submit" class="btn btn-sm btn-success w-100">Save</button>
                     </form>
+                    {% if user.is_authenticated %}
+                    <!-- AI Calendar Query Form -->
+                    <div class="card mt-4 shadow-sm">
+                        <div class="card-body">
+                            <form id="ai-query-form">
+                                <div class="mb-3">
+                                    <label for="ai-input" class="form-label">AI Calendar Query:</label>
+                                    <textarea id="ai-input" class="form-control form-control-sm" rows="3"
+                                        placeholder="e.g., Meeting next Tuesday..."></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="ai-file" class="form-label">Optional PDF Upload</label>
+                                    <input type="file" class="form-control form-control-sm" id="ai-file" name="file">
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-primary w-100">Submit Query</button>
+                            </form>
+                            <div id="ai-response" class="mt-2 d-none alert alert-secondary"></div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -79,6 +99,36 @@
             </div>
         </div>
     </div>
+
+    {% if user.is_authenticated %}
+    <!-- Chat History and Suggested Events -->
+    <div class="card mt-4 shadow-sm" id="chat-container">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">🗂️ Chat History</h5>
+        </div>
+        <div class="card-body">
+            <div id="chat-history" class="mb-3">
+                <!-- Session queries and file summaries go here -->
+                {% for entry in chat_history %}
+                <div class="card mb-2 shadow-sm">
+                    <div class="card-body">
+                        <h6>Query {{ forloop.counter }}:</h6>
+                        <p><strong>Input:</strong> {{ entry.query|default:"<em>None</em>" }}</p>
+                        {% if entry.file_text %}
+                            <p><strong>PDF Preview:</strong><br><small>{{ entry.file_text|truncatechars:300 }}</small></p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div id="event-suggestions" class="mt-4">
+                <!-- Events suggested by LLM will appear here -->
+            </div>
+            <button id="submit-all-events" class="btn btn-success mt-3 d-none">Submit All Events</button>
+        </div>
+    </div>
+    {% endif %}
+
     {% else %}
     <p><em>No calendars found.</em></p>
     {% endif %}
@@ -104,6 +154,80 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        console.log("💡 DOM fully loaded. JS running.");
+        const aiForm = document.getElementById('ai-query-form');
+        console.log("🔍 aiForm loaded:", aiForm);
+        const aiResponseBox = document.getElementById('ai-response');
+        if (!aiForm) {
+        console.error("❌ aiForm not found in DOM.");
+        return;
+    }
+
+    aiForm.addEventListener('submit', function (e) {
+        console.log("📬 AI form submit triggered.");
+        e.preventDefault();
+
+        const query = document.getElementById('ai-input').value.trim();
+        const fileInput = document.getElementById('ai-file').files[0];
+
+        if (!query && !fileInput) {
+            alert("Please provide a query or upload a file.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("query", query);
+        if (fileInput) {
+            formData.append("file", fileInput);
+        }
+
+        fetch('/ai-process-query/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert("❌ " + data.error);
+                return;
+            }
+
+            fetch('/chat-history/')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.history) {
+                        displayChatHistory(data.history);
+                    }
+                    console.log("🛰️ /chat-history/ returned:", data);
+                });
+
+            if (data.suggested_events) {
+                displaySuggestedEvents(data.suggested_events);
+            }
+
+            fetch('/suggested-events/')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.suggested_events) {
+                        displaySuggestedEvents(data.suggested_events);
+                    }
+                });
+
+            aiResponseBox.classList.remove('d-none');
+            aiResponseBox.textContent = "✅ Submitted. Waiting for AI to respond with events...";
+            document.getElementById('ai-input').value = '';
+            document.getElementById('ai-file').value = '';
+        })
+        .catch(err => {
+            console.error("❌ Error submitting query:", err);
+            alert("❌ Error submitting query.");
+        });
+        });
+
+
         const allEvents = [
             {% for event in events %}
             {
@@ -166,12 +290,22 @@
                         })
                             .then(response => response.json())
                             .then(data => {
-                                if (data.message) {
-                                    info.event.remove();
-                                    alert("✅ Event deleted from Google Calendar.");
-                                } else {
-                                    alert("❌ Failed to delete event: " + data.error);
-                                }
+                                if (data.error) {
+                                alert("❌ " + data.error);
+                                return;
+                            }
+
+                            // Fetch updated session-based chat history from backend
+                            fetch('/chat-history/')
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data.history) {
+                                        displayChatHistory(data.history);
+                                    }
+                                });
+
+                            aiResponseBox.classList.remove('d-none');
+                            aiResponseBox.textContent = "✅ Submitted. Waiting for AI to respond with events...";
                             })
                             .catch(error => {
                                 console.error("❌ Delete error:", error);
@@ -194,6 +328,15 @@
                 });
             });
         }
+        fetch('/chat-history/')
+        .then(res => res.json())
+        .then(data => {
+            if (data.history) {
+                displayChatHistory(data.history);
+            }
+        });
+
+
 
         document.getElementById('add-event-toggle').addEventListener('click', function () {
             document.getElementById('manual-event-form').classList.toggle('d-none');
@@ -264,5 +407,92 @@
             });
         }
     });
+
+    function displayChatHistory(history) {
+    console.log("📜 Rendering chat history:", history);  // <-- add this
+    const container = document.getElementById("chat-history");
+    container.innerHTML = "";  // Clear before re-adding
+
+    history.forEach((entry, index) => {
+        const card = document.createElement("div");
+        card.className = "card mb-2 shadow-sm";
+        card.innerHTML = `
+            <div class="card-body">
+                <h6>Query ${index + 1}:</h6>
+                <p><strong>Input:</strong> ${entry.query || "<em>None</em>"}</p>
+                ${entry.file_text ? `<p><strong>PDF Preview:</strong><br><small>${entry.file_text.substring(0, 300)}...</small></p>` : ""}
+            </div>
+        `;
+        container.appendChild(card);
+    });
+    }
+
+    function displaySuggestedEvents(events) {
+    const container = document.getElementById('event-suggestions');
+    container.innerHTML = '';
+
+    if (!events || events.length === 0) {
+        container.innerHTML = "<p class='text-muted'>No event suggestions available.</p>";
+        return;
+    }
+
+    events.forEach((event, idx) => {
+        const div = document.createElement('div');
+        div.className = "card mb-2 shadow-sm";
+
+        const safe = (key, fallback = "") => event[key] || fallback;
+
+        div.innerHTML = `
+            <div class="card-body">
+                <h6>Suggested Event ${idx + 1}</h6>
+                <p><strong>Title:</strong> ${safe("title")}</p>
+                <p><strong>Start:</strong> ${safe("start")}</p>
+                <p><strong>End:</strong> ${safe("end")}</p>
+                <p><strong>Location:</strong> ${safe("location")}</p>
+                <p><strong>Description:</strong> ${safe("description")}</p>
+                <button class="btn btn-sm btn-success" onclick='submitSuggestedEvent(${JSON.stringify(JSON.stringify(event))})'>✅ Submit</button>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+    function submitSuggestedEvent(eventStr) {
+        const event = JSON.parse(eventStr);  // double parse due to JSON string escaping
+
+        if (!event.title || !event.start || !event.end) {
+            alert("❌ Missing required fields.");
+            return;
+        }
+
+        fetch('/add-event/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: new URLSearchParams({
+                title: event.title,
+                start: event.start,
+                end: event.end,
+                location: event.location || '',
+                description: event.description || ''
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                alert("❌ " + data.error);
+            } else {
+                alert("✅ Event submitted to Google Calendar!");
+            }
+        })
+        .catch(err => {
+            console.error("❌ Error submitting suggested event:", err);
+            alert("❌ Submission failed.");
+        });
+    }
+
+
 </script>
 {% endblock %}

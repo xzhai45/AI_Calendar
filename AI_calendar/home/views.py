@@ -7,6 +7,14 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
 import datetime
+from django.views.decorators.http import require_POST
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+import PyPDF2
+from io import BytesIO
+from django.views.decorators.http import require_GET
+
+
 
 def add_event_to_google(request):
     if request.method == "POST":
@@ -174,5 +182,102 @@ def index(request):
 
     return render(request, 'home/index.html', {
         'events': events,
-        'calendars': all_calendars
+        'calendars': all_calendars,
+        'chat_history': request.session.get("chat_history", [])
+    })
+
+
+@csrf_exempt
+@require_POST
+@login_required
+def ai_process_query(request):
+    print("🚀 ai_process_query view triggered")
+    user = request.user
+
+    # Ensure only Google-authenticated users can proceed
+    if not SocialToken.objects.filter(account__user=user, account__provider='google').exists():
+        return JsonResponse({"error": "Only Google-authenticated users can use this feature."}, status=403)
+
+    query = request.POST.get("query", "").strip()
+    uploaded_file = request.FILES.get("file")
+
+    session_history = request.session.get("chat_history", [])
+    extracted_text = ""
+
+    # ✅ Extract PDF text if provided
+    if uploaded_file and uploaded_file.name.endswith('.pdf'):
+        try:
+            pdf_reader = PyPDF2.PdfReader(BytesIO(uploaded_file.read()))
+            for page in pdf_reader.pages:
+                extracted_text += page.extract_text() or ""
+        except Exception as e:
+            return JsonResponse({"error": f"PDF read error: {str(e)}"}, status=400)
+
+    # ✅ Simulate LLM response (replace with actual LLM logic later)
+    suggested_events_raw = [
+        {
+            "title": "Mock Meeting",
+            "start": "2025-04-20T14:00:00",
+            "end": "2025-04-20T15:00:00",
+            "description": "Weekly team sync",
+            "location": "Room 101"
+        },
+        {
+            "title": "Advisor Check-in",
+            "start": "2025-04-21T10:00:00",
+            "end": "2025-04-21T10:30:00",
+            "description": "Quick academic advising",
+            "location": "Zoom"
+        }
+    ]
+
+    # ✅ Normalize event format
+    normalized_events = []
+    for ev in suggested_events_raw:
+        normalized_events.append({
+            "title": ev.get("title", "Untitled Event"),
+            "start": ev.get("start"),
+            "end": ev.get("end"),
+            "location": ev.get("location", ""),
+            "description": ev.get("description", ""),
+            "backgroundColor": "#3788d8",
+            "calendarId": "primary",
+            "extendedProps": {
+                "location": ev.get("location", ""),
+                "description": ev.get("description", ""),
+                "creator": "",
+                "htmlLink": "",
+                "googleEventId": ""
+            }
+        })
+
+
+    session_history.append({
+        "query": query,
+        "file_text": extracted_text,
+        "suggested_events": normalized_events
+    })
+    request.session["chat_history"] = session_history
+    request.session["event_suggestions"] = normalized_events
+
+    return JsonResponse({
+        "message": "Query and file processed.",
+        "query": query,
+        "file_text_preview": extracted_text[:500],
+        "session_length": len(session_history),
+        "suggested_events": normalized_events
+    })
+
+
+@require_GET
+@login_required
+def get_chat_history(request):
+    history = request.session.get("chat_history", [])
+    return JsonResponse({"history": history})
+
+@require_GET
+@login_required
+def get_event_suggestions(request):
+    return JsonResponse({
+        "suggested_events": request.session.get("event_suggestions", [])
     })
