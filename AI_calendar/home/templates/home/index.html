@@ -109,17 +109,6 @@
         <div class="card-body">
             <div id="chat-history" class="mb-3">
                 <!-- Session queries and file summaries go here -->
-                {% for entry in chat_history %}
-                <div class="card mb-2 shadow-sm">
-                    <div class="card-body">
-                        <h6>Query {{ forloop.counter }}:</h6>
-                        <p><strong>Input:</strong> {{ entry.query|default:"<em>None</em>" }}</p>
-                        {% if entry.file_text %}
-                            <p><strong>PDF Preview:</strong><br><small>{{ entry.file_text|truncatechars:300 }}</small></p>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
             </div>
             <div id="event-suggestions" class="mt-4">
                 <!-- Events suggested by LLM will appear here -->
@@ -195,31 +184,32 @@
                 return;
             }
 
-            fetch('/chat-history/')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.history) {
-                        displayChatHistory(data.history);
-                    }
-                    console.log("🛰️ /chat-history/ returned:", data);
-                });
+        fetch('/chat-history/')
+            .then(res => res.json())
+            .then(data => {
+                if (data.history) {
+                    displayChatHistory(data.history);
+                }
+                console.log("🛰️ /chat-history/ returned:", data);
+            });
 
-            if (data.suggested_events) {
-                displaySuggestedEvents(data.suggested_events);
-            }
+        if (data.suggested_events) {
+            displaySuggestedEvents(data.suggested_events);
+        }
 
-            fetch('/suggested-events/')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.suggested_events) {
-                        displaySuggestedEvents(data.suggested_events);
-                    }
-                });
+        fetch('/suggested-events/')
+            .then(res => res.json())
+            .then(data => {
+                console.log("🐞 /suggested-events/ response:", data);
+                if (data.suggested_events) {
+                    displaySuggestedEvents(data.suggested_events);
+                }
+            });
 
-            aiResponseBox.classList.remove('d-none');
-            aiResponseBox.textContent = "✅ Submitted. Waiting for AI to respond with events...";
-            document.getElementById('ai-input').value = '';
-            document.getElementById('ai-file').value = '';
+        aiResponseBox.classList.remove('d-none');
+        aiResponseBox.textContent = "✅ Submitted. Waiting for AI to respond with events...";
+        document.getElementById('ai-input').value = '';
+        document.getElementById('ai-file').value = '';
         })
         .catch(err => {
             console.error("❌ Error submitting query:", err);
@@ -295,22 +285,21 @@
                                 return;
                             }
 
-                            // Fetch updated session-based chat history from backend
-                            fetch('/chat-history/')
-                                .then(res => res.json())
-                                .then(data => {
-                                    if (data.history) {
-                                        displayChatHistory(data.history);
-                                    }
-                                });
-
-                            aiResponseBox.classList.remove('d-none');
-                            aiResponseBox.textContent = "✅ Submitted. Waiting for AI to respond with events...";
-                            })
-                            .catch(error => {
-                                console.error("❌ Delete error:", error);
-                                alert("❌ Error deleting event.");
+                        // Fetch updated session-based chat history from backend
+                        fetch('/chat-history/')
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.history) {
+                                    displayChatHistory(data.history);
+                                }
                             });
+                            alert("✅ Event deleted from Google Calendar.");
+
+                        })
+                        .catch(error => {
+                            console.error("❌ Delete error:", error);
+                            alert("❌ Error deleting event.");
+                        });
                     }
                 }
             });
@@ -333,6 +322,13 @@
         .then(data => {
             if (data.history) {
                 displayChatHistory(data.history);
+            }
+        });
+        fetch('/suggested-events/')
+        .then(res => res.json())
+        .then(data => {
+            if (data.suggested_events) {
+                displaySuggestedEvents(data.suggested_events);
             }
         });
 
@@ -409,9 +405,9 @@
     });
 
     function displayChatHistory(history) {
-    console.log("📜 Rendering chat history:", history);  // <-- add this
+    console.log("📜 Rendering chat history:", history); 
     const container = document.getElementById("chat-history");
-    container.innerHTML = "";  // Clear before re-adding
+    container.innerHTML = ""; 
 
     history.forEach((entry, index) => {
         const card = document.createElement("div");
@@ -428,6 +424,7 @@
     }
 
     function displaySuggestedEvents(events) {
+    console.log("displaySuggestedEvents called with:", events);
     const container = document.getElementById('event-suggestions');
     container.innerHTML = '';
 
@@ -437,6 +434,7 @@
     }
 
     events.forEach((event, idx) => {
+        console.log("📌 Rendering event:", event);
         const div = document.createElement('div');
         div.className = "card mb-2 shadow-sm";
 

@@ -194,17 +194,14 @@ def ai_process_query(request):
     print("🚀 ai_process_query view triggered")
     user = request.user
 
-    # Ensure only Google-authenticated users can proceed
     if not SocialToken.objects.filter(account__user=user, account__provider='google').exists():
         return JsonResponse({"error": "Only Google-authenticated users can use this feature."}, status=403)
 
     query = request.POST.get("query", "").strip()
     uploaded_file = request.FILES.get("file")
-
     session_history = request.session.get("chat_history", [])
     extracted_text = ""
 
-    # ✅ Extract PDF text if provided
     if uploaded_file and uploaded_file.name.endswith('.pdf'):
         try:
             pdf_reader = PyPDF2.PdfReader(BytesIO(uploaded_file.read()))
@@ -213,7 +210,6 @@ def ai_process_query(request):
         except Exception as e:
             return JsonResponse({"error": f"PDF read error: {str(e)}"}, status=400)
 
-    # ✅ Simulate LLM response (replace with actual LLM logic later)
     suggested_events_raw = [
         {
             "title": "Mock Meeting",
@@ -231,7 +227,6 @@ def ai_process_query(request):
         }
     ]
 
-    # ✅ Normalize event format
     normalized_events = []
     for ev in suggested_events_raw:
         normalized_events.append({
@@ -250,7 +245,6 @@ def ai_process_query(request):
                 "googleEventId": ""
             }
         })
-
 
     session_history.append({
         "query": query,
@@ -272,12 +266,14 @@ def ai_process_query(request):
 @require_GET
 @login_required
 def get_chat_history(request):
-    history = request.session.get("chat_history", [])
-    return JsonResponse({"history": history})
+    return JsonResponse({
+        "history": request.session.get("chat_history", [])
+    })
 
 @require_GET
 @login_required
 def get_event_suggestions(request):
+    print("📤 Returning suggested events:", request.session.get("event_suggestions", []))
     return JsonResponse({
         "suggested_events": request.session.get("event_suggestions", [])
     })

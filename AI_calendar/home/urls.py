@@ -8,6 +8,5 @@ urlpatterns = [
     path('delete-event/', views.delete_event_from_google, name='delete_event_from_google'),
     path('ai-process-query/', views.ai_process_query, name='ai_process_query'),
     path('chat-history/', views.get_chat_history, name='chat_history'),
-    path('ai-process-query/', views.ai_process_query, name='ai_process_query'),
     path('suggested-events/', views.get_event_suggestions, name='get_event_suggestions'),
 ]
