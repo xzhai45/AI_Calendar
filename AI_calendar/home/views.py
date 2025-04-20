@@ -234,11 +234,13 @@ def ai_process_query(request):
 
     # Kick off background thread
     def simulate_llm_generation(session_key):
+        print("🧵 simulate_llm_generation started")
+        
         import time
         from django.contrib.sessions.models import Session
         from django.contrib.sessions.backends.db import SessionStore
 
-        time.sleep(10)  # simulate delay
+        time.sleep(30)  # simulate delay
 
         generated_events = [
             {
@@ -247,34 +249,6 @@ def ai_process_query(request):
                 "end": "2025-04-22T13:00:00",
                 "location": "Library",
                 "description": "AI generated"
-            },
-            {
-                "title": "Generated Event 2",
-                "start": "2025-04-23T14:00:00",
-                "end": "2025-04-23T15:00:00",
-                "location": "Tech Square",
-                "description": "Another meeting"
-            },
-            {
-                "title": "Generated Event 3",
-                "start": "2025-04-24T16:00:00",
-                "end": "2025-04-24T17:00:00",
-                "location": "Cafe",
-                "description": "Coffee break"
-            },
-            {
-                "title": "Generated Event 4",
-                "start": "2025-04-25T18:00:00",
-                "end": "2025-04-25T19:00:00",
-                "location": "Gym",
-                "description": "Workout session"
-            },
-            {
-                "title": "Generated Event 5",
-                "start": "2025-04-26T20:00:00",
-                "end": "2025-04-26T21:00:00",
-                "location": "Home",
-                "description": "Dinner with family"
             }
         ]
 
@@ -333,9 +307,12 @@ def get_event_suggestions(request):
         "suggested_events": request.session.get("event_suggestions", [])
     })
 
+
+
 @require_GET
 @login_required
 def poll_llm_status(request):
+    print("📡 poll_llm_status hit at", datetime.datetime.now().time(), "processing =", request.session.get("llm_processing", False))
     return JsonResponse({
         "processing": request.session.get("llm_processing", False),
         "suggested_events": request.session.get("event_suggestions", [])
