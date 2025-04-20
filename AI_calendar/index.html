@@ -1,131 +1,3 @@
-{% extends "base.html" %}
-{% load static %}
-{% load i18n %}
-
-{% block title %}Home | GT AI Calendar{% endblock title %}
-
-{% block extra_css %}
-<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
-{% endblock %}
-
-{% block content %}
-<div class="container mt-5 text-center">
-    <h1>Welcome to GT AI Calendar</h1>
-    <p>Your AI-powered scheduling assistant</p>
-</div>
-<div class="container mt-3">
-    <details>
-        <summary class="text-muted">Debug Info (click to expand)</summary>
-        <pre>{{ events|safe }}</pre>
-        <pre>{{ calendars|safe }}</pre>
-    </details>
-</div>
-
-<div class="container mt-5">
-    {% if calendars %}
-    <div class="row">
-        <!-- Calendar Selector -->
-        <div class="col-md-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">My Calendars</h5>
-                </div>
-                <div class="card-body">
-                    <form id="calendar-form">
-                        {% for cal in calendars %}
-                        <div class="form-check">
-                            <input class="form-check-input calendar-toggle" type="checkbox" name="calendars"
-                                value="{{ cal.id }}" checked>
-                            <label class="form-check-label">{{ cal.name }}</label>
-                        </div>
-                        {% endfor %}
-                    </form>
-
-                    <button id="add-event-toggle" class="btn btn-outline-primary btn-sm mt-3 w-100">+ Add Event</button>
-                    <form id="manual-event-form" class="border p-3 rounded shadow-sm bg-light d-none">
-                        <div class="mb-2">
-                            <input type="text" class="form-control form-control-sm" placeholder="Title" id="manual-title"
-                                required>
-                        </div>
-                        <div class="mb-2">
-                            <input type="datetime-local" class="form-control form-control-sm" id="manual-start" required>
-                        </div>
-                        <div class="mb-2">
-                            <input type="datetime-local" class="form-control form-control-sm" id="manual-end" required>
-                        </div>
-                        <div class="mb-2">
-                            <input type="text" class="form-control form-control-sm" placeholder="Location"
-                                id="manual-location">
-                        </div>
-                        <div class="mb-2">
-                            <input type="text" class="form-control form-control-sm" placeholder="Description"
-                                id="manual-description">
-                        </div>
-                        <button type="submit" class="btn btn-sm btn-success w-100">Save</button>
-                    </form>
-                    {% if user.is_authenticated %}
-                    <!-- AI Calendar Query Form -->
-                    <div class="card mt-4 shadow-sm">
-                        <div class="card-body">
-                            <form id="ai-query-form">
-                                <div class="mb-3">
-                                    <label for="ai-input" class="form-label">AI Calendar Query:</label>
-                                    <textarea id="ai-input" class="form-control form-control-sm" rows="3"
-                                        placeholder="e.g., Meeting next Tuesday..."></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="ai-file" class="form-label">Optional PDF Upload</label>
-                                    <input type="file" class="form-control form-control-sm" id="ai-file" name="file">
-                                </div>
-                                <button type="submit" class="btn btn-sm btn-primary w-100">Submit Query</button>
-                            </form>
-                            <div id="ai-response" class="mt-2 d-none alert alert-secondary"></div>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Calendar View -->
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <div id="calendar"></div>
-                    {% if not events %}
-                    <p class="text-center mt-3">No events to display.</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {% if user.is_authenticated %}
-    <!-- Chat History and Suggested Events -->
-    <div class="card mt-4 shadow-sm" id="chat-container">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">🗂️ Chat History</h5>
-        </div>
-        <div class="card-body">
-            <div id="chat-history" class="mb-3">
-                <!-- Session queries and file summaries go here -->
-            </div>
-            <div id="event-suggestions" class="mt-4">
-                <!-- Events suggested by LLM will appear here -->
-            </div>
-            <button id="submit-all-events" class="btn btn-success mt-3 d-none">Submit All Events</button>
-        </div>
-    </div>
-    {% endif %}
-
-    {% else %}
-    <p><em>No calendars found.</em></p>
-    {% endif %}
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 <script>
     function getCookie(name) {
         let cookieValue = null;
@@ -141,72 +13,77 @@
         }
         return cookieValue;
     }
-    
+
     document.addEventListener('DOMContentLoaded', function () {
-        console.log("💡 DOM fully loaded. JS running.");
-        const aiForm = document.getElementById('ai-query-form');
-        const aiResponseBox = document.getElementById('ai-response');
-    
-        if (!aiForm) {
+            console.log("💡 DOM fully loaded. JS running.");
+            const aiForm = document.getElementById('ai-query-form');
+            console.log("🔍 aiForm loaded:", aiForm);
+            const aiResponseBox = document.getElementById('ai-response');
+            if (!aiForm) {
             console.error("❌ aiForm not found in DOM.");
             return;
         }
-    
+
         aiForm.addEventListener('submit', function (e) {
-            console.log("📬 AI form submit triggered.");
-            e.preventDefault();
-    
-            const query = document.getElementById('ai-input').value.trim();
-            const fileInput = document.getElementById('ai-file').files[0];
-    
-            if (!query && !fileInput) {
-                alert("Please provide a query or upload a file.");
+        console.log("📬 AI form submit triggered.");
+        e.preventDefault();
+
+        const query = document.getElementById('ai-input').value.trim();
+        const fileInput = document.getElementById('ai-file').files[0];
+
+        if (!query && !fileInput) {
+            alert("Please provide a query or upload a file.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("query", query);
+        if (fileInput) {
+            formData.append("file", fileInput);
+        }
+
+        fetch('/ai-process-query/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert("❌ " + data.error);
                 return;
             }
-    
-            const formData = new FormData();
-            formData.append("query", query);
-            if (fileInput) {
-                formData.append("file", fileInput);
+
+            // Update chat history
+            fetch('/chat-history/')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.history) {
+                        displayChatHistory(data.history);
+                    }
+                    console.log("🛰️ /chat-history/ returned:", data);
+                });
+
+            // ✅ Start polling only if LLM is still processing
+            if (data.processing) {
+                console.log("🧪 Starting pollSuggestedEvents...");
+                pollSuggestedEvents();
             }
-    
-            fetch('/ai-process-query/', {
-                method: 'POST',
-                headers: { 'X-CSRFToken': getCookie('csrftoken') },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert("❌ " + data.error);
-                    return;
-                }
-    
-                fetch('/chat-history/')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.history) {
-                            displayChatHistory(data.history);
-                        }
-                        console.log("🛰️ /chat-history/ returned:", data);
-                    });
-    
-                if (data.processing) {
-                    console.log("🧪 Starting pollSuggestedEvents...");
-                    pollSuggestedEvents();
-                }
-    
-                aiResponseBox.classList.remove('d-none');
-                aiResponseBox.textContent = "✅ Submitted. Waiting for AI to respond with events...";
-                document.getElementById('ai-input').value = '';
-                document.getElementById('ai-file').value = '';
-            })
-            .catch(err => {
-                console.error("❌ Error submitting query:", err);
-                alert("❌ Error submitting query.");
-            });
+
+            aiResponseBox.classList.remove('d-none');
+            aiResponseBox.textContent = "✅ Submitted. Waiting for AI to respond with events...";
+            document.getElementById('ai-input').value = '';
+            document.getElementById('ai-file').value = '';
+        })
+        .catch(err => {
+            console.error("❌ Error submitting query:", err);
+            alert("❌ Error submitting query.");
         });
-    
+    });
+
+
         const allEvents = [
             {% for event in events %}
             {
@@ -225,11 +102,11 @@
             }{% if not forloop.last %},{% endif %}
             {% endfor %}
         ];
-    
+
         const calendarEl = document.getElementById('calendar');
         const checkboxes = document.querySelectorAll('.calendar-toggle');
         let calendar = null;
-    
+
         if (calendarEl) {
             calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
@@ -240,6 +117,7 @@
                     right: 'dayGridMonth,timeGridWeek,listWeek'
                 },
                 events: allEvents,
+
                 eventClick: function (info) {
                     const props = info.event.extendedProps;
                     const title = info.event.title;
@@ -248,11 +126,12 @@
                     const location = props.location || 'N/A';
                     const description = props.description || 'N/A';
                     const creator = props.creator || 'N/A';
-    
+                    const htmlLink = props.htmlLink || '#';
+
                     const confirmDelete = confirm(
                         `Title: ${title}\nStart: ${start}\nEnd: ${end}\nLocation: ${location}\nDescription: ${description}\nCreator: ${creator}\n\nDo you want to delete this event?`
                     );
-    
+
                     if (confirmDelete) {
                         fetch('/delete-event/', {
                             method: 'POST',
@@ -265,20 +144,23 @@
                                 calendarId: props.calendarId || "primary"
                             })
                         })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.error) {
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.error) {
                                 alert("❌ " + data.error);
                                 return;
                             }
-                            fetch('/chat-history/')
-                                .then(res => res.json())
-                                .then(data => {
-                                    if (data.history) {
-                                        displayChatHistory(data.history);
-                                    }
-                                });
+
+                        // Fetch updated session-based chat history from backend
+                        fetch('/chat-history/')
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.history) {
+                                    displayChatHistory(data.history);
+                                }
+                            });
                             alert("✅ Event deleted from Google Calendar.");
+
                         })
                         .catch(error => {
                             console.error("❌ Delete error:", error);
@@ -287,8 +169,9 @@
                     }
                 }
             });
+
             calendar.render();
-    
+
             checkboxes.forEach(cb => {
                 cb.addEventListener('change', () => {
                     const selectedCalendars = Array.from(checkboxes)
@@ -300,87 +183,97 @@
                 });
             });
         }
-    
         fetch('/chat-history/')
-            .then(res => res.json())
-            .then(data => {
-                if (data.history) {
-                    displayChatHistory(data.history);
-                }
-            });
-    
+        .then(res => res.json())
+        .then(data => {
+            if (data.history) {
+                displayChatHistory(data.history);
+            }
+        });
         fetch('/suggested-events/')
-            .then(res => res.json())
-            .then(data => {
-                if (data.suggested_events) {
-                    displaySuggestedEvents(data.suggested_events);
-                }
-            });
-    
+        .then(res => res.json())
+        .then(data => {
+            if (data.suggested_events) {
+                displaySuggestedEvents(data.suggested_events);
+            }
+        });
+
+
         document.getElementById('add-event-toggle').addEventListener('click', function () {
             document.getElementById('manual-event-form').classList.toggle('d-none');
         });
-    
+
         const manualForm = document.getElementById('manual-event-form');
         if (manualForm) {
             manualForm.addEventListener('submit', function (e) {
                 e.preventDefault();
-    
+
+                function toRFC3339(localDateTime) {
+                    const date = new Date(localDateTime);
+                    return date.toISOString();
+                }
+
                 const title = document.getElementById('manual-title').value;
                 const startRaw = document.getElementById('manual-start').value;
                 const endRaw = document.getElementById('manual-end').value;
-                const location = document.getElementById('manual-location').value;
-                const description = document.getElementById('manual-description').value;
-    
-                function toRFC3339(datetime) {
-                    return new Date(datetime).toISOString();
-                }
-    
                 const start = toRFC3339(startRaw);
                 const end = toRFC3339(endRaw);
-    
+                const location = document.getElementById('manual-location').value;
+                const description = document.getElementById('manual-description').value;
+
                 if (new Date(start) >= new Date(end)) {
                     alert("❌ End time must be after start time.");
                     return;
                 }
-    
+
+                const eventPayload = {
+                    title,
+                    start,
+                    end,
+                    location,
+                    description
+                };
+
                 fetch('/add-event/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'X-CSRFToken': getCookie('csrftoken')
                     },
-                    body: new URLSearchParams({
-                        title,
-                        start,
-                        end,
-                        location,
-                        description
-                    })
+                    body: new URLSearchParams(eventPayload)
                 })
-                .then(res => res.json())
+                .then(response => response.json())
                 .then(data => {
                     if (data.message) {
                         alert("✅ Event added to Google Calendar!");
+
+                        // Hide and reset the form
                         manualForm.classList.add('d-none');
                         manualForm.reset();
-                        setTimeout(() => location.reload(), 1000);
-                    } else {
-                        alert("❌ " + (data.error || "Failed to add event."));
+
+                        // Reload after short delay
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1000);  // wait 1 second
+                    } else if (data.error) {
+                        alert("❌ Failed: " + data.error);
                     }
                 })
-                .catch(err => {
-                    console.error("❌ Network error adding event:", err);
-                    alert("❌ Submission failed.");
+                .catch(error => {
+                    console.error("❌ Network error adding event:", error);
+                    alert("❌ Network error. Please try again.");
                 });
+
+
             });
         }
     });
-    
+
     function displayChatHistory(history) {
-        console.log("📜 Rendering chat history:", history);
+        console.log("📜 Rendering chat history:", history); 
         const container = document.getElementById("chat-history");
-        container.innerHTML = "";
+        container.innerHTML = ""; 
+
         history.forEach((entry, index) => {
             const card = document.createElement("div");
             card.className = "card mb-2 shadow-sm";
@@ -393,21 +286,25 @@
             `;
             container.appendChild(card);
         });
-    }
-    
+        }
+
     function displaySuggestedEvents(events) {
         console.log("displaySuggestedEvents called with:", events);
         const container = document.getElementById('event-suggestions');
         container.innerHTML = '';
+
         if (!events || events.length === 0) {
             container.innerHTML = "<p class='text-muted'>No event suggestions available.</p>";
             return;
         }
-    
+
         events.forEach((event, idx) => {
+            console.log("📌 Rendering event:", event);
             const div = document.createElement('div');
             div.className = "card mb-2 shadow-sm";
+
             const safe = (key, fallback = "") => event[key] || fallback;
+
             div.innerHTML = `
                 <div class="card-body">
                     <h6>Suggested Event ${idx + 1}</h6>
@@ -421,15 +318,16 @@
             `;
             container.appendChild(div);
         });
-    }
-    
+}
+
     function submitSuggestedEvent(eventStr) {
-        const event = JSON.parse(eventStr);
+        const event = JSON.parse(eventStr);  // double parse due to JSON string escaping
+
         if (!event.title || !event.start || !event.end) {
             alert("❌ Missing required fields.");
             return;
         }
-    
+
         fetch('/add-event/', {
             method: 'POST',
             headers: {
@@ -457,14 +355,15 @@
             alert("❌ Submission failed.");
         });
     }
-    
+
     function pollSuggestedEvents() {
-        console.log("🔁 pollSuggestedEvents() called");
+        console.log("🔁 pollSuggestedEvents() called");  
+
         const pollInterval = setInterval(() => {
             fetch('/poll-llm-status/')
                 .then(res => res.json())
                 .then(data => {
-                    console.log("📡 Poll response:", data);
+                    console.log("📡 Poll response:", data); 
                     if (!data.processing) {
                         clearInterval(pollInterval);
                         displaySuggestedEvents(data.suggested_events);
@@ -478,6 +377,6 @@
                 });
         }, 3000);
     }
-    </script>
-    
-{% endblock %}
+
+
+</script>
