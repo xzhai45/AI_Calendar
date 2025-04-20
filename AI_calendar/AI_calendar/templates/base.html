@@ -39,6 +39,12 @@
                         <a class="nav-link text-primary" href="{% url 'home.about' %}">About</a>
                     </li>
 
+                    <li class="nav-item ms-2">
+                        <a class="btn btn-primary px-3" href="{% url 'home.plus' %}">
+                            <i class="fa-solid fa-star me-1"></i> Upgrade to Plus
+                        </a>
+                    </li>
+                    
                     <div class="vr bg-secondary mx-2 d-none d-lg-block"></div>
                     {% if user.is_authenticated %}
                         <li class="nav-item">

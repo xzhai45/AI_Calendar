@@ -12,4 +12,5 @@ urlpatterns = [
     path('about/', views.about, name='home.about'),
     path('poll-llm-status/', views.poll_llm_status, name='poll_llm_status'),
 
+    path('plus/', views.plus, name='home.plus'),
 ]
