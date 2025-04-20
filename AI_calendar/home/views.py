@@ -244,13 +244,13 @@ def ai_process_query(request):
         from pydantic import BaseModel
         from openai import OpenAI
         from django.contrib.sessions.backends.db import SessionStore
-
-        # Wait to simulate LLM delay
-        time.sleep(3)
+        import openai, os, json, time
+        from datetime import datetime
 
         # Load API key from .env
         api_key = os.getenv("OPENAI_API_KEY")
         client = OpenAI(api_key=api_key)
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Define schema
         class CalendarEvent(BaseModel):
@@ -272,7 +272,10 @@ def ai_process_query(request):
             {
                 "role": "user",
                 "content": f"""
-    Extract 3 to 5 calendar events and return only a JSON list of objects that follow this schema:
+
+                Today's date and time is: {current_time}
+
+    Extract all calendar events and return only a JSON list of objects that follow this schema:
     - title: str
     - start: ISO8601 datetime string
     - end: ISO8601 datetime string
