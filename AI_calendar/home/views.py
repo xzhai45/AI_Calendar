@@ -210,29 +210,68 @@ def ai_process_query(request):
         except Exception as e:
             return JsonResponse({"error": f"PDF read error: {str(e)}"}, status=400)
 
-    suggested_events_raw = [
-        {
-            "title": "Mock Meeting",
-            "start": "2025-04-20T14:00:00",
-            "end": "2025-04-20T15:00:00",
-            "description": "Weekly team sync",
-            "location": "Room 101"
-        },
-        {
-            "title": "Advisor Check-in",
-            "start": "2025-04-21T10:00:00",
-            "end": "2025-04-21T10:30:00",
-            "description": "Quick academic advising",
-            "location": "Zoom"
-        }
-    ]
+    # Add to session history immediately
+    session_history.append({
+        "query": query,
+        "file_text": extracted_text,
+        "suggested_events": []  # placeholder until events are ready
+    })
 
-    normalized_events = []
-    for ev in suggested_events_raw:
-        normalized_events.append({
-            "title": ev.get("title", "Untitled Event"),
-            "start": ev.get("start"),
-            "end": ev.get("end"),
+    request.session["chat_history"] = session_history
+    request.session["event_suggestions"] = []
+    request.session["llm_processing"] = True
+    request.session.modified = True  # ensure session is saved
+
+    # Kick off background thread
+    def simulate_llm_generation(session_key):
+        import time
+        from django.contrib.sessions.models import Session
+        from django.contrib.sessions.backends.db import SessionStore
+
+        time.sleep(10)  # simulate delay
+
+        generated_events = [
+            {
+                "title": "Generated Event 1",
+                "start": "2025-04-22T12:00:00",
+                "end": "2025-04-22T13:00:00",
+                "location": "Library",
+                "description": "AI generated"
+            },
+            {
+                "title": "Generated Event 2",
+                "start": "2025-04-23T14:00:00",
+                "end": "2025-04-23T15:00:00",
+                "location": "Tech Square",
+                "description": "Another meeting"
+            },
+            {
+                "title": "Generated Event 3",
+                "start": "2025-04-24T16:00:00",
+                "end": "2025-04-24T17:00:00",
+                "location": "Cafe",
+                "description": "Coffee break"
+            },
+            {
+                "title": "Generated Event 4",
+                "start": "2025-04-25T18:00:00",
+                "end": "2025-04-25T19:00:00",
+                "location": "Gym",
+                "description": "Workout session"
+            },
+            {
+                "title": "Generated Event 5",
+                "start": "2025-04-26T20:00:00",
+                "end": "2025-04-26T21:00:00",
+                "location": "Home",
+                "description": "Dinner with family"
+            }
+        ]
+
+        normalized = [{
+            "title": ev["title"],
+            "start": ev["start"],
+            "end": ev["end"],
             "location": ev.get("location", ""),
             "description": ev.get("description", ""),
             "backgroundColor": "#3788d8",
@@ -244,22 +283,28 @@ def ai_process_query(request):
                 "htmlLink": "",
                 "googleEventId": ""
             }
-        })
+        } for ev in generated_events]
 
-    session_history.append({
-        "query": query,
-        "file_text": extracted_text,
-        "suggested_events": normalized_events
-    })
-    request.session["chat_history"] = session_history
-    request.session["event_suggestions"] = normalized_events
+        session = SessionStore(session_key=session_key)
+        session["event_suggestions"] = normalized
+        session["llm_processing"] = False
+
+        # Also update chat history with real suggestions
+        history = session.get("chat_history", [])
+        if history:
+            history[-1]["suggested_events"] = normalized
+        session["chat_history"] = history
+
+        session.save()
+
+    from threading import Thread
+    Thread(target=simulate_llm_generation, args=(request.session.session_key,)).start()
 
     return JsonResponse({
-        "message": "Query and file processed.",
+        "message": "Query received. LLM processing started.",
         "query": query,
-        "file_text_preview": extracted_text[:500],
-        "session_length": len(session_history),
-        "suggested_events": normalized_events
+        "processing": True,
+        "suggested_events": []
     })
 
 
@@ -277,3 +322,12 @@ def get_event_suggestions(request):
     return JsonResponse({
         "suggested_events": request.session.get("event_suggestions", [])
     })
+
+@require_GET
+@login_required
+def poll_llm_status(request):
+    return JsonResponse({
+        "processing": request.session.get("llm_processing", False),
+        "suggested_events": request.session.get("event_suggestions", [])
+    })
+
