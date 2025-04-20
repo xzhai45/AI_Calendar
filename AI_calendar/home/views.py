@@ -187,6 +187,12 @@ def index(request):
     })
 
 
+def about(request):
+    template_data = {}
+    template_data['title'] = 'About'
+    return render(request, 'home/about.html', {'template_data': template_data})
+
+
 @csrf_exempt
 @require_POST
 @login_required
