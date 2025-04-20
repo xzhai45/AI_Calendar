@@ -192,6 +192,10 @@ def about(request):
     template_data['title'] = 'About'
     return render(request, 'home/about.html', {'template_data': template_data})
 
+def plus(request):
+    template_data = {}
+    template_data['title'] = 'Plus'
+    return render(request, 'home/plus.html', {'template_data': template_data})
 
 @csrf_exempt
 @require_POST
