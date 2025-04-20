@@ -309,13 +309,13 @@
                 }
             });
     
-        // fetch('/suggested-events/')
-        //     .then(res => res.json())
-        //     .then(data => {
-        //         if (data.suggested_events) {
-        //             displaySuggestedEvents(data.suggested_events);
-        //         }
-        //     });
+        fetch('/suggested-events/')
+            .then(res => res.json())
+            .then(data => {
+                if (data.suggested_events) {
+                    displaySuggestedEvents(data.suggested_events);
+                }
+            });
     
         document.getElementById('add-event-toggle').addEventListener('click', function () {
             document.getElementById('manual-event-form').classList.toggle('d-none');

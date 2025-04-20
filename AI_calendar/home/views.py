@@ -13,6 +13,10 @@ from django.utils.decorators import method_decorator
 import PyPDF2
 from io import BytesIO
 from django.views.decorators.http import require_GET
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 
@@ -186,7 +190,6 @@ def index(request):
         'chat_history': request.session.get("chat_history", [])
     })
 
-
 def about(request):
     template_data = {}
     template_data['title'] = 'About'
@@ -224,7 +227,7 @@ def ai_process_query(request):
     session_history.append({
         "query": query,
         "file_text": extracted_text,
-        "suggested_events": []  # placeholder until events are ready
+        "suggested_events": []  
     })
 
     request.session["chat_history"] = session_history
@@ -232,57 +235,119 @@ def ai_process_query(request):
     request.session["llm_processing"] = True
     request.session.modified = True  # ensure session is saved
 
-    # Kick off background thread
-    def simulate_llm_generation(session_key):
+    def simulate_llm_generation(session_key, query, extracted_text=""):
         print("🧵 simulate_llm_generation started")
-        
+
+        import os
         import time
-        from django.contrib.sessions.models import Session
+        from typing import List
+        from pydantic import BaseModel
+        from openai import OpenAI
         from django.contrib.sessions.backends.db import SessionStore
 
-        time.sleep(30)  # simulate delay
+        # Wait to simulate LLM delay
+        time.sleep(3)
 
-        generated_events = [
+        # Load API key from .env
+        api_key = os.getenv("OPENAI_API_KEY")
+        client = OpenAI(api_key=api_key)
+
+        # Define schema
+        class CalendarEvent(BaseModel):
+            title: str
+            start: str  # ISO 8601 datetime
+            end: str
+            location: str
+            description: str
+
+        class EventWrapper(BaseModel):
+            events: List[CalendarEvent]
+
+        # Prepare LLM messages
+        messages = [
             {
-                "title": "Generated Event 1",
-                "start": "2025-04-22T12:00:00",
-                "end": "2025-04-22T13:00:00",
-                "location": "Library",
-                "description": "AI generated"
+                "role": "system",
+                "content": "You are a helpful assistant that extracts calendar events from user input."
+            },
+            {
+                "role": "user",
+                "content": f"""
+    Extract 3 to 5 calendar events and return only a JSON list of objects that follow this schema:
+    - title: str
+    - start: ISO8601 datetime string
+    - end: ISO8601 datetime string
+    - location: str
+    - description: str
+
+    Do NOT return markdown or explanation. Only return valid JSON in the `events` field of an object.
+    start and end should be in ISO 8601 format. If no events are found, return an empty list.
+    start time should always be before end time. not equal to or after.
+    If the user provided a file, use the text from the file to help extract events.
+    If the user provided a query, use that to help extract events.
+    If the user provided both, use both to extract events.
+
+
+    Query:
+    {query}
+
+    Extracted file text (if any):
+    {extracted_text[:800]}
+    """
             }
         ]
 
+        try:
+            # Call OpenAI with structured schema
+            completion = client.beta.chat.completions.parse(
+                model="gpt-4o-2024-08-06",
+                messages=messages,
+                response_format=EventWrapper,
+            )
+
+            parsed_events = completion.choices[0].message.parsed.events
+            print("✅ Structured events parsed:", parsed_events)
+
+        except Exception as e:
+            print("❌ GPT structured output failed:", e)
+            parsed_events = []
+
+        # Normalize for FullCalendar frontend
         normalized = [{
-            "title": ev["title"],
-            "start": ev["start"],
-            "end": ev["end"],
-            "location": ev.get("location", ""),
-            "description": ev.get("description", ""),
+            "title": ev.title,
+            "start": ev.start,
+            "end": ev.end,
+            "location": ev.location,
+            "description": ev.description,
             "backgroundColor": "#3788d8",
             "calendarId": "primary",
             "extendedProps": {
-                "location": ev.get("location", ""),
-                "description": ev.get("description", ""),
+                "location": ev.location,
+                "description": ev.description,
                 "creator": "",
                 "htmlLink": "",
                 "googleEventId": ""
             }
-        } for ev in generated_events]
+        } for ev in parsed_events]
 
+        # Update session
         session = SessionStore(session_key=session_key)
         session["event_suggestions"] = normalized
         session["llm_processing"] = False
 
-        # Also update chat history with real suggestions
         history = session.get("chat_history", [])
         if history:
             history[-1]["suggested_events"] = normalized
         session["chat_history"] = history
 
         session.save()
+        print("✅ Events saved to session.")
+
+
+
 
     from threading import Thread
-    Thread(target=simulate_llm_generation, args=(request.session.session_key,)).start()
+    Thread(target=simulate_llm_generation, args=(request.session.session_key, query, extracted_text)).start()
+    print("🚀 ai_process_query view completed, LLM processing started in background.")
 
     return JsonResponse({
         "message": "Query received. LLM processing started.",
