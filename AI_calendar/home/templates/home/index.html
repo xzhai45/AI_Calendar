@@ -9,11 +9,11 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-5 text-center">
+<div class="container mt-5 text-center" data-aos="fade-up" data-aos-delay="100">
     <h1>Welcome to GT AI Calendar</h1>
     <p>Your AI-powered scheduling assistant</p>
 </div>
-<div class="container mt-3">
+<div class="container mt-3" data-aos="fade-up" data-aos-delay="100">
     <details>
         <summary class="text-muted">Debug Info (click to expand)</summary>
         <pre>{{ events|safe }}</pre>
@@ -21,7 +21,7 @@
     </details>
 </div>
 
-<div class="container mt-5">
+<div class="container mt-5" data-aos="fade-up" data-aos-delay="100">
     {% if calendars %}
     <div class="row">
         <!-- Calendar Selector -->

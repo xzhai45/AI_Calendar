@@ -36,7 +36,19 @@
                     {% endfor %}
 
                     <li class="nav-item">
+                        <a class="nav-link text-primary" href="{% url 'home.index' %}">Home</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link text-primary" href="{% url 'home.tutorial' %}">Tutorial</a>
+                    </li>
+
+                    <li class="nav-item">
                         <a class="nav-link text-primary" href="{% url 'home.about' %}">About</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link text-primary" href="{% url 'home.contact' %}">Contact Us</a>
                     </li>
 
                     <li class="nav-item ms-2">
@@ -74,7 +86,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="p-4 bg-light text-dark border-top mt-5">
+    <footer class="p-4 bg-light text-dark border-top mt-5" data-aos="fade-up" data-aos-delay="100">
         <div class="container">
             <div class="row mt-3">
                 <!-- About -->
@@ -102,7 +114,7 @@
                     {% else %}
                         <p><a class="nav-link text-dark" href="{% provider_login_url 'google' %}">Sign in</a></p>
                     {% endif %}
-                    <p><a class="nav-link text-dark" href="#">Contact</a></p>
+                    <p><a class="nav-link text-dark" href="{% url 'home.contact' %}">Contact</a></p>
                 </div>
 
                 <!-- Contact Info -->

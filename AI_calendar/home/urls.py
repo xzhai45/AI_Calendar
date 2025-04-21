@@ -13,4 +13,6 @@ urlpatterns = [
     path('poll-llm-status/', views.poll_llm_status, name='poll_llm_status'),
 
     path('plus/', views.plus, name='home.plus'),
+    path('contact/', views.contact, name='home.contact'),
+    path('tutorial/', views.tutorial, name='home.tutorial'),
 ]

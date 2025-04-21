@@ -200,6 +200,16 @@ def plus(request):
     template_data['title'] = 'Plus'
     return render(request, 'home/plus.html', {'template_data': template_data})
 
+def contact(request):
+    template_data = {}
+    template_data['title'] = 'Contact'
+    return render(request, 'home/contact.html', {'template_data' : template_data})
+
+def tutorial(request):
+    template_data = {}
+    template_data['title'] = 'Tutorial'
+    return render(request, 'home/tutorial.html', {'template_data' : template_data})    
+
 @csrf_exempt
 @require_POST
 @login_required
