@@ -84,7 +84,7 @@ def add_event_to_google(request):
             })
 
         except Exception as e:
-            print("❌ Failed to create event:", e)
+            print("Failed to create event:", e)
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=400)
@@ -319,10 +319,10 @@ def ai_process_query(request):
             )
 
             parsed_events = completion.choices[0].message.parsed.events
-            print("✅ Structured events parsed:", parsed_events)
+            print("Structured events parsed:", parsed_events)
 
         except Exception as e:
-            print("❌ GPT structured output failed:", e)
+            print("GPT structured output failed:", e)
             parsed_events = []
 
         # Normalize for FullCalendar frontend
@@ -354,7 +354,7 @@ def ai_process_query(request):
         session["chat_history"] = history
 
         session.save()
-        print("✅ Events saved to session.")
+        print("Events saved to session.")
 
 
 
