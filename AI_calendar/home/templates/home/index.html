@@ -411,14 +411,29 @@
             div.innerHTML = `
                 <div class="card-body">
                     <h6>Suggested Event ${idx + 1}</h6>
-                    <p><strong>Title:</strong> ${safe("title")}</p>
-                    <p><strong>Start:</strong> ${safe("start")}</p>
-                    <p><strong>End:</strong> ${safe("end")}</p>
-                    <p><strong>Location:</strong> ${safe("location")}</p>
-                    <p><strong>Description:</strong> ${safe("description")}</p>
-                    <button class="btn btn-sm btn-success" onclick='submitSuggestedEvent(${JSON.stringify(JSON.stringify(event))})'>✅ Submit</button>
+                    <div class="mb-2">
+                    <label>Title:</label>
+                    <input type="text" class="form-control form-control-sm" id="title-${idx}" value="${safe("title")}" />
+                    </div>
+                    <div class="mb-2">
+                    <label>Start:</label>
+                    <input type="datetime-local" class="form-control form-control-sm" id="start-${idx}" value="${safe("start")}" />
+                    </div>
+                    <div class="mb-2">
+                    <label>End:</label>
+                    <input type="datetime-local" class="form-control form-control-sm" id="end-${idx}" value="${safe("end")}" />
+                    </div>
+                    <div class="mb-2">
+                    <label>Location:</label>
+                    <input type="text" class="form-control form-control-sm" id="location-${idx}" value="${safe("location")}" />
+                    </div>
+                    <div class="mb-2">
+                    <label>Description:</label>
+                    <input type="text" class="form-control form-control-sm" id="description-${idx}" value="${safe("description")}" />
+                    </div>
+                    <button class="btn btn-sm btn-success" onclick='submitEditedEvent(${idx})'>✅ Submit</button>
                 </div>
-            `;
+                `;
             container.appendChild(div);
         });
     }
@@ -478,6 +493,51 @@
                 });
         }, 1500);
     }
+
+    function submitEditedEvent(idx) {
+        const title = document.getElementById(`title-${idx}`).value;
+        const start = document.getElementById(`start-${idx}`).value;
+        const end = document.getElementById(`end-${idx}`).value;
+        const location = document.getElementById(`location-${idx}`).value;
+        const description = document.getElementById(`description-${idx}`).value;
+
+        if (!title || !start || !end) {
+            alert("❌ Missing required fields.");
+            return;
+        }
+
+        if (new Date(start) >= new Date(end)) {
+            alert("❌ End time must be after start time.");
+            return;
+        }
+
+        fetch('/add-event/', {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: new URLSearchParams({
+            title,
+            start: new Date(start).toISOString(),
+            end: new Date(end).toISOString(),
+            location,
+            description
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.message) {
+            alert("✅ Event submitted!");
+            } else {
+            alert("❌ " + (data.error || "Submission failed."));
+            }
+        })
+        .catch(err => {
+            console.error("❌ Error submitting event:", err);
+            alert("❌ Submission failed.");
+        });
+        }
 
     </script>
     
