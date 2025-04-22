@@ -9,11 +9,11 @@
 {% endblock %}
 
 {% block content %}
-<div class="container mt-5 text-center" data-aos="fade-up" data-aos-delay="100">
+<div class="container mt-5 text-center">
     <h1>Welcome to GT AI Calendar</h1>
     <p>Your AI-powered scheduling assistant</p>
 </div>
-<div class="container mt-3" data-aos="fade-up" data-aos-delay="100">
+<div class="container mt-3">
     <details>
         <summary class="text-muted">Debug Info (click to expand)</summary>
         <pre>{{ events|safe }}</pre>
@@ -21,11 +21,11 @@
     </details>
 </div>
 
-<div class="container mt-5" data-aos="fade-up" data-aos-delay="100">
-    {% if calendars %}
+<div class="container mt-5">
     <div class="row">
         <!-- Calendar Selector -->
         <div class="col-md-4">
+            {% if user.is_authenticated and calendars %}
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">My Calendars</h5>
@@ -63,7 +63,8 @@
                         </div>
                         <button type="submit" class="btn btn-sm btn-success w-100">Save</button>
                     </form>
-                    {% if user.is_authenticated %}
+
+                    
                     <!-- AI Calendar Query Form -->
                     <div class="card mt-4 shadow-sm">
                         <div class="card-body">
@@ -74,7 +75,7 @@
                                         placeholder="e.g., Meeting next Tuesday..."></textarea>
                                 </div>
                                 <div class="mb-3">
-                                    <label for="ai-file" class="form-label">Optional PDF Upload</label>
+                                    <label for="ai-file" class="form-label">PDF Upload</label>
                                     <input type="file" class="form-control form-control-sm" id="ai-file" name="file">
                                 </div>
                                 <button type="submit" class="btn btn-sm btn-primary w-100">Submit Query</button>
@@ -82,19 +83,20 @@
                             <div id="ai-response" class="mt-2 d-none alert alert-secondary"></div>
                         </div>
                     </div>
-                    {% endif %}
                 </div>
             </div>
+            {% endif %}
         </div>
+        
 
         <!-- Calendar View -->
         <div class="col-md-8">
             <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">My Schedule</h5>
+                </div>
                 <div class="card-body">
                     <div id="calendar"></div>
-                    {% if not events %}
-                    <p class="text-center mt-3">No events to display.</p>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -117,11 +119,28 @@
         </div>
     </div>
     {% endif %}
-
-    {% else %}
-    <p><em>No calendars found.</em></p>
+    {% if not user.is_authenticated %}
+    <!-- Guest user form -->
+    <div class="card mt-4 shadow-sm">
+        <div class="card-body">
+            <form id="guest-ai-form">
+                <div class="mb-3">
+                    <label for="guest-ai-input" class="form-label">AI Calendar Trial (Guest):</label>
+                    <textarea id="guest-ai-input" class="form-control form-control-sm" rows="3"
+                        placeholder="e.g., Study session next Friday..."></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="guest-ai-file" class="form-label">Optional PDF Upload</label>
+                    <input type="file" class="form-control form-control-sm" id="guest-ai-file" name="file">
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary w-100">Submit Trial</button>
+            </form>
+            <div id="guest-ai-response" class="mt-2 d-none alert alert-info"></div>
+        </div>
+    </div>
     {% endif %}
-</div>
+
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -403,6 +422,9 @@
             container.innerHTML = "<p class='text-muted'>No event suggestions available.</p>";
             return;
         }
+
+        const isAuthenticated = {{ user.is_authenticated|yesno:"true,false" }};
+
     
         events.forEach((event, idx) => {
             const div = document.createElement('div');
@@ -540,5 +562,81 @@
         }
 
     </script>
-    
+    <script>
+    {% if not user.is_authenticated %}
+    document.addEventListener('DOMContentLoaded', function () {
+        const calendarEl = document.getElementById('calendar');
+        if (calendarEl) {
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            height: 'auto',
+            headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            },
+            events: []
+        });
+        calendar.render();
+        }
+    });
+    {% endif %}
+    </script>
+    <script> 
+    document.addEventListener("DOMContentLoaded", function () {
+        const guestForm = document.getElementById("guest-ai-form");
+        const guestResponse = document.getElementById("guest-ai-response");
+
+        if (guestForm) {
+            guestForm.addEventListener("submit", function (e) {
+                e.preventDefault();
+
+                const query = document.getElementById("guest-ai-input").value.trim();
+                const file = document.getElementById("guest-ai-file").files[0];
+
+                if (!query && !file) {
+                    alert("Please enter a message or upload a PDF.");
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append("query", query);
+                if (file) formData.append("file", file);
+
+                fetch("/guest-ai-query/", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    guestResponse.classList.remove("d-none");
+
+                    if (data.error) {
+                        guestResponse.classList.add("alert-danger");
+                        guestResponse.classList.remove("alert-info");
+                        guestResponse.innerText =  "" + data.error;
+                    } else if (data.events && data.events.length > 0) {
+                        guestResponse.classList.remove("alert-danger");
+                        guestResponse.classList.add("alert-info");
+                        guestResponse.innerHTML = data.events.map(ev => `
+                            <strong>${ev.title}</strong><br>
+                            ${ev.start} → ${ev.end}<br>
+                            ${ev.location}<br>
+                            ${ev.description}
+                        `).join("<hr>");
+                    } else {
+                        guestResponse.innerText = "No events detected.";
+                    }
+                })
+                .catch(err => {
+                    guestResponse.classList.remove("alert-info");
+                    guestResponse.classList.add("alert-danger");
+                    guestResponse.classList.remove("d-none");
+                    guestResponse.innerText = "Error: " + err;
+                });
+            });
+        }
+    });
+
+    </script> 
 {% endblock %}

@@ -212,13 +212,14 @@ def tutorial(request):
 
 @csrf_exempt
 @require_POST
-@login_required
 def ai_process_query(request):
     print("🚀 ai_process_query view triggered")
-    user = request.user
+    user = "auth" if request.user.is_authenticated else "guest"
+    prefix = f"{user}_"
+    #user = request.user
 
-    if not SocialToken.objects.filter(account__user=user, account__provider='google').exists():
-        return JsonResponse({"error": "Only Google-authenticated users can use this feature."}, status=403)
+    #if not SocialToken.objects.filter(account__user=user, account__provider='google').exists():
+        #return JsonResponse({"error": "Only Google-authenticated users can use this feature."}, status=403)
 
     query = request.POST.get("query", "").strip()
     uploaded_file = request.FILES.get("file")
@@ -369,17 +370,20 @@ def ai_process_query(request):
         "suggested_events": []
     })
 
-
+@csrf_exempt
 @require_GET
-@login_required
 def get_chat_history(request):
+    user = "auth" if request.user.is_authenticated else "guest"
+    key = f"{user}_chat_history"
     return JsonResponse({
         "history": request.session.get("chat_history", [])
     })
 
+@csrf_exempt
 @require_GET
-@login_required
 def get_event_suggestions(request):
+    user = "auth" if request.user.is_authenticated else "guest"
+    key = f"{user}_chat_history"
     print("📤 Returning suggested events:", request.session.get("event_suggestions", []))
     return JsonResponse({
         "suggested_events": request.session.get("event_suggestions", [])
@@ -387,12 +391,107 @@ def get_event_suggestions(request):
 
 
 
+@csrf_exempt
 @require_GET
-@login_required
 def poll_llm_status(request):
+    user = "auth" if request.user.is_authenticated else "guest"
+    key_processing = f"{user}_llm_processing"
+    key_suggestions = f"{user}_event_suggestions"    
     print("📡 poll_llm_status hit at", datetime.datetime.now().time(), "processing =", request.session.get("llm_processing", False))
     return JsonResponse({
         "processing": request.session.get("llm_processing", False),
         "suggested_events": request.session.get("event_suggestions", [])
     })
+    
+@csrf_exempt
+@require_POST
+def guest_ai_query(request):
+    print("👤 Guest AI Query triggered")
+
+    # ✅ Limit to one query per session
+    if request.session.get("guest_ai_used"):
+        return JsonResponse({"error": "You can only use the guest AI once per session."}, status=403)
+
+    query = request.POST.get("query", "").strip()
+    uploaded_file = request.FILES.get("file")
+    extracted_text = ""
+
+    if not query and not uploaded_file:
+        return JsonResponse({"error": "Query or file required."}, status=400)
+
+    if uploaded_file and uploaded_file.name.endswith('.pdf'):
+        try:
+            pdf_reader = PyPDF2.PdfReader(BytesIO(uploaded_file.read()))
+            for page in pdf_reader.pages:
+                extracted_text += page.extract_text() or ""
+        except Exception as e:
+            return JsonResponse({"error": f"PDF read error: {str(e)}"}, status=400)
+
+    from openai import OpenAI
+    from datetime import datetime
+    import os
+    from typing import List
+    from pydantic import BaseModel
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    client = OpenAI(api_key=api_key)
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    class CalendarEvent(BaseModel):
+        title: str
+        start: str
+        end: str
+        location: str
+        description: str
+
+    class EventWrapper(BaseModel):
+        events: List[CalendarEvent]
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant that extracts calendar events from user input."
+        },
+        {
+            "role": "user",
+            "content": f"""
+Today's date and time is: {current_time}
+
+Extract all calendar events and return only a JSON list of objects that follow this schema:
+- title
+- start (ISO8601 datetime)
+- end
+- location
+- description
+
+If no events are found, return an empty list.
+
+Query:
+{query}
+
+Extracted file text (if any):
+{extracted_text[:800]}
+            """
+        }
+    ]
+
+    try:
+        completion = client.beta.chat.completions.parse(
+            model="gpt-4o-2024-08-06",
+            messages=messages,
+            response_format=EventWrapper,
+        )
+
+        events = completion.choices[0].message.parsed.events
+
+        # ✅ Mark that guest has used their one query
+        request.session["guest_ai_used"] = True
+        request.session.modified = True
+
+        return JsonResponse({"events": [event.dict() for event in events]})
+
+    except Exception as e:
+        print("❌ Guest GPT failed:", e)
+        return JsonResponse({"error": str(e)}, status=500)
+
 
