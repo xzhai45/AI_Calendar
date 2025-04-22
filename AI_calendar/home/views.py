@@ -75,7 +75,7 @@ def add_event_to_google(request):
 
             # Fetch back the full event to confirm saved values
             fetched_event = service.events().get(calendarId='primary', eventId=created_event['id']).execute()
-            print("✅ Event confirmed in Google Calendar:", json.dumps(fetched_event, indent=2))
+            print("Event confirmed in Google Calendar:", json.dumps(fetched_event, indent=2))
 
             return JsonResponse({
                 "message": "Event added to Google Calendar",
@@ -84,7 +84,7 @@ def add_event_to_google(request):
             })
 
         except Exception as e:
-            print("❌ Failed to create event:", e)
+            print("Failed to create event:", e)
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=400)
@@ -118,7 +118,7 @@ def delete_event_from_google(request):
             return JsonResponse({"message": "Event deleted"})
 
         except Exception as e:
-            print("❌ Failed to delete event:", e)
+            print("Failed to delete event:", e)
             return JsonResponse({"error": str(e)}, status=500)
 
     return JsonResponse({"error": "Invalid request method"}, status=400)
@@ -182,7 +182,7 @@ def index(request):
                     })
 
         except Exception as e:
-            print("❌ Error fetching calendar data:", e)
+            print("Error fetching calendar data:", e)
 
     return render(request, 'home/index.html', {
         'events': events,
@@ -213,7 +213,7 @@ def tutorial(request):
 @csrf_exempt
 @require_POST
 def ai_process_query(request):
-    print("🚀 ai_process_query view triggered")
+    print("ai_process_query view triggered")
     user = "auth" if request.user.is_authenticated else "guest"
     prefix = f"{user}_"
     #user = request.user
@@ -319,10 +319,10 @@ def ai_process_query(request):
             )
 
             parsed_events = completion.choices[0].message.parsed.events
-            print("✅ Structured events parsed:", parsed_events)
+            print("Structured events parsed:", parsed_events)
 
         except Exception as e:
-            print("❌ GPT structured output failed:", e)
+            print("GPT structured output failed:", e)
             parsed_events = []
 
         # Normalize for FullCalendar frontend
@@ -354,14 +354,14 @@ def ai_process_query(request):
         session["chat_history"] = history
 
         session.save()
-        print("✅ Events saved to session.")
+        print("Events saved to session.")
 
 
 
 
     from threading import Thread
     Thread(target=simulate_llm_generation, args=(request.session.session_key, query, extracted_text)).start()
-    print("🚀 ai_process_query view completed, LLM processing started in background.")
+    print("ai_process_query view completed, LLM processing started in background.")
 
     return JsonResponse({
         "message": "Query received. LLM processing started.",
@@ -384,7 +384,7 @@ def get_chat_history(request):
 def get_event_suggestions(request):
     user = "auth" if request.user.is_authenticated else "guest"
     key = f"{user}_chat_history"
-    print("📤 Returning suggested events:", request.session.get("event_suggestions", []))
+    print("Returning suggested events:", request.session.get("event_suggestions", []))
     return JsonResponse({
         "suggested_events": request.session.get("event_suggestions", [])
     })
@@ -397,7 +397,7 @@ def poll_llm_status(request):
     user = "auth" if request.user.is_authenticated else "guest"
     key_processing = f"{user}_llm_processing"
     key_suggestions = f"{user}_event_suggestions"    
-    print("📡 poll_llm_status hit at", datetime.datetime.now().time(), "processing =", request.session.get("llm_processing", False))
+    print("poll_llm_status hit at", datetime.datetime.now().time(), "processing =", request.session.get("llm_processing", False))
     return JsonResponse({
         "processing": request.session.get("llm_processing", False),
         "suggested_events": request.session.get("event_suggestions", [])
@@ -406,11 +406,7 @@ def poll_llm_status(request):
 @csrf_exempt
 @require_POST
 def guest_ai_query(request):
-    print("👤 Guest AI Query triggered")
-
-    # ✅ Limit to one query per session
-    if request.session.get("guest_ai_used"):
-        return JsonResponse({"error": "You can only use the guest AI once per session."}, status=403)
+    print("Guest AI Query triggered")
 
     query = request.POST.get("query", "").strip()
     uploaded_file = request.FILES.get("file")
@@ -484,14 +480,13 @@ Extracted file text (if any):
 
         events = completion.choices[0].message.parsed.events
 
-        # ✅ Mark that guest has used their one query
         request.session["guest_ai_used"] = True
         request.session.modified = True
 
         return JsonResponse({"events": [event.dict() for event in events]})
 
     except Exception as e:
-        print("❌ Guest GPT failed:", e)
+        print("Guest GPT failed:", e)
         return JsonResponse({"error": str(e)}, status=500)
 
 
