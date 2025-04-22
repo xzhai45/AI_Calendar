@@ -408,9 +408,6 @@ def poll_llm_status(request):
 def guest_ai_query(request):
     print("Guest AI Query triggered")
 
-    if request.session.get("guest_ai_used"):
-        return JsonResponse({"error": "You can only use the guest AI once per session."}, status=403)
-
     query = request.POST.get("query", "").strip()
     uploaded_file = request.FILES.get("file")
     extracted_text = ""
