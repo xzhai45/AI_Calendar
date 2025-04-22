@@ -614,25 +614,25 @@
                     if (data.error) {
                         guestResponse.classList.add("alert-danger");
                         guestResponse.classList.remove("alert-info");
-                        guestResponse.innerText = "❌ " + data.error;
+                        guestResponse.innerText =  "" + data.error;
                     } else if (data.events && data.events.length > 0) {
                         guestResponse.classList.remove("alert-danger");
                         guestResponse.classList.add("alert-info");
                         guestResponse.innerHTML = data.events.map(ev => `
                             <strong>${ev.title}</strong><br>
                             ${ev.start} → ${ev.end}<br>
-                            📍 ${ev.location}<br>
-                            📝 ${ev.description}
+                            ${ev.location}<br>
+                            ${ev.description}
                         `).join("<hr>");
                     } else {
-                        guestResponse.innerText = "✅ No events detected.";
+                        guestResponse.innerText = "No events detected.";
                     }
                 })
                 .catch(err => {
                     guestResponse.classList.remove("alert-info");
                     guestResponse.classList.add("alert-danger");
                     guestResponse.classList.remove("d-none");
-                    guestResponse.innerText = "❌ Error: " + err;
+                    guestResponse.innerText = "Error: " + err;
                 });
             });
         }
