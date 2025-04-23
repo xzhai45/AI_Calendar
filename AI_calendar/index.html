@@ -1,382 +1,108 @@
-<script>
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
+#     print("🧵 simulate_llm_generation started")
 
-    document.addEventListener('DOMContentLoaded', function () {
-            console.log("💡 DOM fully loaded. JS running.");
-            const aiForm = document.getElementById('ai-query-form');
-            console.log("🔍 aiForm loaded:", aiForm);
-            const aiResponseBox = document.getElementById('ai-response');
-            if (!aiForm) {
-            console.error("❌ aiForm not found in DOM.");
-            return;
-        }
+#     import os
+#     import time
+#     from typing import List
+#     from pydantic import BaseModel
+#     from openai import OpenAI
+#     from django.contrib.sessions.backends.db import SessionStore
+#     import openai, os, json, time
+#     from datetime import datetime
 
-        aiForm.addEventListener('submit', function (e) {
-        console.log("📬 AI form submit triggered.");
-        e.preventDefault();
+#     # Load API key from .env
+#     api_key = os.getenv("OPENAI_API_KEY")
+#     client = OpenAI(api_key=api_key)
+#     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        const query = document.getElementById('ai-input').value.trim();
-        const fileInput = document.getElementById('ai-file').files[0];
+#     # Define schema
+#     class CalendarEvent(BaseModel):
+#         title: str
+#         start: str  # ISO 8601 datetime
+#         end: str
+#         location: str
+#         description: str
 
-        if (!query && !fileInput) {
-            alert("Please provide a query or upload a file.");
-            return;
-        }
+#     class EventWrapper(BaseModel):
+#         events: List[CalendarEvent]
 
-        const formData = new FormData();
-        formData.append("query", query);
-        if (fileInput) {
-            formData.append("file", fileInput);
-        }
+#     # Prepare LLM messages
+#     messages = [
+#         {
+#             "role": "system",
+#             "content": "You are a helpful assistant that extracts calendar events from user input."
+#         },
+#         {
+#             "role": "user",
+#             "content": f"""
 
-        fetch('/ai-process-query/', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                alert("❌ " + data.error);
-                return;
-            }
+#             Today's date and time is: {current_time}
 
-            // Update chat history
-            fetch('/chat-history/')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.history) {
-                        displayChatHistory(data.history);
-                    }
-                    console.log("🛰️ /chat-history/ returned:", data);
-                });
+# Extract all calendar events and return only a JSON list of objects that follow this schema:
+# - title: str
+# - start: ISO8601 datetime string
+# - end: ISO8601 datetime string
+# - location: str
+# - description: str
 
-            // ✅ Start polling only if LLM is still processing
-            if (data.processing) {
-                console.log("🧪 Starting pollSuggestedEvents...");
-                pollSuggestedEvents();
-            }
-
-            aiResponseBox.classList.remove('d-none');
-            aiResponseBox.textContent = "✅ Submitted. Waiting for AI to respond with events...";
-            document.getElementById('ai-input').value = '';
-            document.getElementById('ai-file').value = '';
-        })
-        .catch(err => {
-            console.error("❌ Error submitting query:", err);
-            alert("❌ Error submitting query.");
-        });
-    });
+# Do NOT return markdown or explanation. Only return valid JSON in the `events` field of an object.
+# start and end should be in ISO 8601 format. If no events are found, return an empty list.
+# start time should always be before end time. not equal to or after.
+# If the user provided a file, use the text from the file to help extract events.
+# If the user provided a query, use that to help extract events.
+# If the user provided both, use both to extract events.
 
 
-        const allEvents = [
-            {% for event in events %}
-            {
-                title: "{{ event.summary|escapejs }}",
-                start: "{{ event.start|escapejs }}",
-                end: "{{ event.end|escapejs }}",
-                backgroundColor: "{{ event.backgroundColor|default:'#3788d8' }}",
-                calendarId: "{{ event.calendarId|escapejs }}",
-                extendedProps: {
-                    location: "{{ event.location|escapejs }}",
-                    description: "{{ event.description|escapejs }}",
-                    creator: "{{ event.creator|escapejs }}",
-                    htmlLink: "{{ event.htmlLink|escapejs }}",
-                    googleEventId: "{{ event.googleEventId|escapejs }}"
-                }
-            }{% if not forloop.last %},{% endif %}
-            {% endfor %}
-        ];
+# Query:
+# {query}
 
-        const calendarEl = document.getElementById('calendar');
-        const checkboxes = document.querySelectorAll('.calendar-toggle');
-        let calendar = null;
+# Extracted file text (if any):
+# {extracted_text[:800]}
+# """
+#         }
+#     ]
 
-        if (calendarEl) {
-            calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                height: 'auto',
-                headerToolbar: {
-                    left: 'prev,next today',
-                    center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,listWeek'
-                },
-                events: allEvents,
+#     try:
+#         # Call OpenAI with structured schema
+#         completion = client.beta.chat.completions.parse(
+#             model="gpt-4o-2024-08-06",
+#             messages=messages,
+#             response_format=EventWrapper,
+#         )
 
-                eventClick: function (info) {
-                    const props = info.event.extendedProps;
-                    const title = info.event.title;
-                    const start = info.event.start.toLocaleString();
-                    const end = info.event.end ? info.event.end.toLocaleString() : 'N/A';
-                    const location = props.location || 'N/A';
-                    const description = props.description || 'N/A';
-                    const creator = props.creator || 'N/A';
-                    const htmlLink = props.htmlLink || '#';
+#         parsed_events = completion.choices[0].message.parsed.events
+#         print("Structured events parsed:", parsed_events)
 
-                    const confirmDelete = confirm(
-                        `Title: ${title}\nStart: ${start}\nEnd: ${end}\nLocation: ${location}\nDescription: ${description}\nCreator: ${creator}\n\nDo you want to delete this event?`
-                    );
+#     except Exception as e:
+#         print("GPT structured output failed:", e)
+#         parsed_events = []
 
-                    if (confirmDelete) {
-                        fetch('/delete-event/', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': getCookie('csrftoken')
-                            },
-                            body: JSON.stringify({
-                                eventId: props.googleEventId,
-                                calendarId: props.calendarId || "primary"
-                            })
-                        })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.error) {
-                                alert("❌ " + data.error);
-                                return;
-                            }
+#     # Normalize for FullCalendar frontend
+#     normalized = [{
+#         "title": ev.title,
+#         "start": ev.start,
+#         "end": ev.end,
+#         "location": ev.location,
+#         "description": ev.description,
+#         "backgroundColor": "#3788d8",
+#         "calendarId": "primary",
+#         "extendedProps": {
+#             "location": ev.location,
+#             "description": ev.description,
+#             "creator": "",
+#             "htmlLink": "",
+#             "googleEventId": ""
+#         }
+#     } for ev in parsed_events]
 
-                        // Fetch updated session-based chat history from backend
-                        fetch('/chat-history/')
-                            .then(res => res.json())
-                            .then(data => {
-                                if (data.history) {
-                                    displayChatHistory(data.history);
-                                }
-                            });
-                            alert("✅ Event deleted from Google Calendar.");
+#     # Update session
+#     session = SessionStore(session_key=session_key)
+#     session["event_suggestions"] = normalized
+#     session["llm_processing"] = False
 
-                        })
-                        .catch(error => {
-                            console.error("❌ Delete error:", error);
-                            alert("❌ Error deleting event.");
-                        });
-                    }
-                }
-            });
+#     history = session.get("chat_history", [])
+#     if history:
+#         history[-1]["suggested_events"] = normalized
+#     session["chat_history"] = history
 
-            calendar.render();
-
-            checkboxes.forEach(cb => {
-                cb.addEventListener('change', () => {
-                    const selectedCalendars = Array.from(checkboxes)
-                        .filter(c => c.checked)
-                        .map(c => c.value);
-                    const filteredEvents = allEvents.filter(ev => selectedCalendars.includes(ev.calendarId));
-                    calendar.removeAllEvents();
-                    calendar.addEventSource(filteredEvents);
-                });
-            });
-        }
-        fetch('/chat-history/')
-        .then(res => res.json())
-        .then(data => {
-            if (data.history) {
-                displayChatHistory(data.history);
-            }
-        });
-        fetch('/suggested-events/')
-        .then(res => res.json())
-        .then(data => {
-            if (data.suggested_events) {
-                displaySuggestedEvents(data.suggested_events);
-            }
-        });
-
-
-        document.getElementById('add-event-toggle').addEventListener('click', function () {
-            document.getElementById('manual-event-form').classList.toggle('d-none');
-        });
-
-        const manualForm = document.getElementById('manual-event-form');
-        if (manualForm) {
-            manualForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-
-                function toRFC3339(localDateTime) {
-                    const date = new Date(localDateTime);
-                    return date.toISOString();
-                }
-
-                const title = document.getElementById('manual-title').value;
-                const startRaw = document.getElementById('manual-start').value;
-                const endRaw = document.getElementById('manual-end').value;
-                const start = toRFC3339(startRaw);
-                const end = toRFC3339(endRaw);
-                const location = document.getElementById('manual-location').value;
-                const description = document.getElementById('manual-description').value;
-
-                if (new Date(start) >= new Date(end)) {
-                    alert("❌ End time must be after start time.");
-                    return;
-                }
-
-                const eventPayload = {
-                    title,
-                    start,
-                    end,
-                    location,
-                    description
-                };
-
-                fetch('/add-event/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: new URLSearchParams(eventPayload)
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.message) {
-                        alert("✅ Event added to Google Calendar!");
-
-                        // Hide and reset the form
-                        manualForm.classList.add('d-none');
-                        manualForm.reset();
-
-                        // Reload after short delay
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1000);  // wait 1 second
-                    } else if (data.error) {
-                        alert("❌ Failed: " + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error("❌ Network error adding event:", error);
-                    alert("❌ Network error. Please try again.");
-                });
-
-
-            });
-        }
-    });
-
-    function displayChatHistory(history) {
-        console.log("📜 Rendering chat history:", history); 
-        const container = document.getElementById("chat-history");
-        container.innerHTML = ""; 
-
-        history.forEach((entry, index) => {
-            const card = document.createElement("div");
-            card.className = "card mb-2 shadow-sm";
-            card.innerHTML = `
-                <div class="card-body">
-                    <h6>Query ${index + 1}:</h6>
-                    <p><strong>Input:</strong> ${entry.query || "<em>None</em>"}</p>
-                    ${entry.file_text ? `<p><strong>PDF Preview:</strong><br><small>${entry.file_text.substring(0, 300)}...</small></p>` : ""}
-                </div>
-            `;
-            container.appendChild(card);
-        });
-        }
-
-    function displaySuggestedEvents(events) {
-        console.log("displaySuggestedEvents called with:", events);
-        const container = document.getElementById('event-suggestions');
-        container.innerHTML = '';
-
-        if (!events || events.length === 0) {
-            container.innerHTML = "<p class='text-muted'>No event suggestions available.</p>";
-            return;
-        }
-
-        events.forEach((event, idx) => {
-            console.log("📌 Rendering event:", event);
-            const div = document.createElement('div');
-            div.className = "card mb-2 shadow-sm";
-
-            const safe = (key, fallback = "") => event[key] || fallback;
-
-            div.innerHTML = `
-                <div class="card-body">
-                    <h6>Suggested Event ${idx + 1}</h6>
-                    <p><strong>Title:</strong> ${safe("title")}</p>
-                    <p><strong>Start:</strong> ${safe("start")}</p>
-                    <p><strong>End:</strong> ${safe("end")}</p>
-                    <p><strong>Location:</strong> ${safe("location")}</p>
-                    <p><strong>Description:</strong> ${safe("description")}</p>
-                    <button class="btn btn-sm btn-success" onclick='submitSuggestedEvent(${JSON.stringify(JSON.stringify(event))})'>✅ Submit</button>
-                </div>
-            `;
-            container.appendChild(div);
-        });
-}
-
-    function submitSuggestedEvent(eventStr) {
-        const event = JSON.parse(eventStr);  // double parse due to JSON string escaping
-
-        if (!event.title || !event.start || !event.end) {
-            alert("❌ Missing required fields.");
-            return;
-        }
-
-        fetch('/add-event/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: new URLSearchParams({
-                title: event.title,
-                start: event.start,
-                end: event.end,
-                location: event.location || '',
-                description: event.description || ''
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.error) {
-                alert("❌ " + data.error);
-            } else {
-                alert("✅ Event submitted to Google Calendar!");
-            }
-        })
-        .catch(err => {
-            console.error("❌ Error submitting suggested event:", err);
-            alert("❌ Submission failed.");
-        });
-    }
-
-    function pollSuggestedEvents() {
-        console.log("🔁 pollSuggestedEvents() called");  
-
-        const pollInterval = setInterval(() => {
-            fetch('/poll-llm-status/')
-                .then(res => res.json())
-                .then(data => {
-                    console.log("📡 Poll response:", data); 
-                    if (!data.processing) {
-                        clearInterval(pollInterval);
-                        displaySuggestedEvents(data.suggested_events);
-                        document.getElementById("ai-response").textContent = "✅ New events received!";
-                    } else {
-                        console.log("⌛ LLM still generating...");
-                    }
-                })
-                .catch(err => {
-                    console.error("❌ Polling error:", err);
-                });
-        }, 3000);
-    }
-
-
-</script>
+#     session.save()
+#     print("Events saved to session.")

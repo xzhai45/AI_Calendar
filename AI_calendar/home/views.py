@@ -234,7 +234,6 @@ def ai_process_query(request):
         except Exception as e:
             return JsonResponse({"error": f"PDF read error: {str(e)}"}, status=400)
 
-    # Add to session history immediately
     session_history.append({
         "query": query,
         "file_text": extracted_text,
@@ -247,114 +246,53 @@ def ai_process_query(request):
     request.session.modified = True  # ensure session is saved
 
     def simulate_llm_generation(session_key, query, extracted_text=""):
-        print("🧵 simulate_llm_generation started")
+        print("🧵 simulate_llm_generation using EventExtraction class")
 
-        import os
-        import time
-        from typing import List
-        from pydantic import BaseModel
-        from openai import OpenAI
         from django.contrib.sessions.backends.db import SessionStore
-        import openai, os, json, time
-        from datetime import datetime
-
-        # Load API key from .env
-        api_key = os.getenv("OPENAI_API_KEY")
-        client = OpenAI(api_key=api_key)
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # Define schema
-        class CalendarEvent(BaseModel):
-            title: str
-            start: str  # ISO 8601 datetime
-            end: str
-            location: str
-            description: str
-
-        class EventWrapper(BaseModel):
-            events: List[CalendarEvent]
-
-        # Prepare LLM messages
-        messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant that extracts calendar events from user input."
-            },
-            {
-                "role": "user",
-                "content": f"""
-
-                Today's date and time is: {current_time}
-
-    Extract all calendar events and return only a JSON list of objects that follow this schema:
-    - title: str
-    - start: ISO8601 datetime string
-    - end: ISO8601 datetime string
-    - location: str
-    - description: str
-
-    Do NOT return markdown or explanation. Only return valid JSON in the `events` field of an object.
-    start and end should be in ISO 8601 format. If no events are found, return an empty list.
-    start time should always be before end time. not equal to or after.
-    If the user provided a file, use the text from the file to help extract events.
-    If the user provided a query, use that to help extract events.
-    If the user provided both, use both to extract events.
-
-
-    Query:
-    {query}
-
-    Extracted file text (if any):
-    {extracted_text[:800]}
-    """
-            }
-        ]
+        from home.llm.event_llm import EventExtraction  # path based on your file location
 
         try:
-            # Call OpenAI with structured schema
-            completion = client.beta.chat.completions.parse(
-                model="gpt-4o-2024-08-06",
-                messages=messages,
-                response_format=EventWrapper,
-            )
+            extractor = EventExtraction()
+            instruction = query if query else None
+            events = extractor.extract(instruction, extracted_text)
 
-            parsed_events = completion.choices[0].message.parsed.events
-            print("Structured events parsed:", parsed_events)
+            normalized = []
+            for ev in events:
+                normalized.append({
+                    "title": ev["title"],
+                    "start": ev["start"],
+                    "end": ev["end"],
+                    "location": ev["location"],
+                    "description": ev["description"],
+                    "backgroundColor": "#3788d8",
+                    "calendarId": "primary",
+                    "extendedProps": {
+                        "location": ev["location"],
+                        "description": ev["description"],
+                        "creator": "",
+                        "htmlLink": "",
+                        "googleEventId": ""
+                    }
+                })
+
+            session = SessionStore(session_key=session_key)
+            session["event_suggestions"] = normalized
+            session["llm_processing"] = False
+
+            history = session.get("chat_history", [])
+            if history:
+                history[-1]["suggested_events"] = normalized
+            session["chat_history"] = history
+            session.save()
+
+            print("✅ Events saved to session")
 
         except Exception as e:
-            print("GPT structured output failed:", e)
-            parsed_events = []
-
-        # Normalize for FullCalendar frontend
-        normalized = [{
-            "title": ev.title,
-            "start": ev.start,
-            "end": ev.end,
-            "location": ev.location,
-            "description": ev.description,
-            "backgroundColor": "#3788d8",
-            "calendarId": "primary",
-            "extendedProps": {
-                "location": ev.location,
-                "description": ev.description,
-                "creator": "",
-                "htmlLink": "",
-                "googleEventId": ""
-            }
-        } for ev in parsed_events]
-
-        # Update session
-        session = SessionStore(session_key=session_key)
-        session["event_suggestions"] = normalized
-        session["llm_processing"] = False
-
-        history = session.get("chat_history", [])
-        if history:
-            history[-1]["suggested_events"] = normalized
-        session["chat_history"] = history
-
-        session.save()
-        print("Events saved to session.")
+            print("❌ simulate_llm_generation failed:", str(e))
+            session = SessionStore(session_key=session_key)
+            session["event_suggestions"] = []
+            session["llm_processing"] = False
+            session.save()
 
 
 
@@ -406,7 +344,7 @@ def poll_llm_status(request):
 @csrf_exempt
 @require_POST
 def guest_ai_query(request):
-    print("Guest AI Query triggered")
+    print("📩 Guest AI Query triggered")
 
     query = request.POST.get("query", "").strip()
     uploaded_file = request.FILES.get("file")
@@ -415,6 +353,7 @@ def guest_ai_query(request):
     if not query and not uploaded_file:
         return JsonResponse({"error": "Query or file required."}, status=400)
 
+    # Extract text from PDF file if provided
     if uploaded_file and uploaded_file.name.endswith('.pdf'):
         try:
             pdf_reader = PyPDF2.PdfReader(BytesIO(uploaded_file.read()))
@@ -423,70 +362,37 @@ def guest_ai_query(request):
         except Exception as e:
             return JsonResponse({"error": f"PDF read error: {str(e)}"}, status=400)
 
-    from openai import OpenAI
-    from datetime import datetime
-    import os
-    from typing import List
-    from pydantic import BaseModel
-
-    api_key = os.getenv("OPENAI_API_KEY")
-    client = OpenAI(api_key=api_key)
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    class CalendarEvent(BaseModel):
-        title: str
-        start: str
-        end: str
-        location: str
-        description: str
-
-    class EventWrapper(BaseModel):
-        events: List[CalendarEvent]
-
-    messages = [
-        {
-            "role": "system",
-            "content": "You are a helpful assistant that extracts calendar events from user input."
-        },
-        {
-            "role": "user",
-            "content": f"""
-Today's date and time is: {current_time}
-
-Extract all calendar events and return only a JSON list of objects that follow this schema:
-- title
-- start (ISO8601 datetime)
-- end
-- location
-- description
-
-If no events are found, return an empty list.
-
-Query:
-{query}
-
-Extracted file text (if any):
-{extracted_text[:800]}
-            """
-        }
-    ]
-
+    # Run structured LLM extraction
     try:
-        completion = client.beta.chat.completions.parse(
-            model="gpt-4o-2024-08-06",
-            messages=messages,
-            response_format=EventWrapper,
-        )
+        from home.llm.event_llm import EventExtraction  # adjust path if needed
+        extractor = EventExtraction()
+        instruction = query if query else None
 
-        events = completion.choices[0].message.parsed.events
+        events = extractor.extract(instruction, extracted_text)
 
-        request.session["guest_ai_used"] = True
+        normalized = []
+        for ev in events:
+            normalized.append({
+                "title": ev["title"],
+                "start": ev["start"],
+                "end": ev["end"],
+                "location": ev["location"],
+                "description": ev["description"],
+                "backgroundColor": "#3788d8",
+                "calendarId": "primary",
+                "extendedProps": {
+                    "location": ev["location"],
+                    "description": ev["description"],
+                    "creator": "",
+                    "htmlLink": "",
+                    "googleEventId": ""
+                }
+            })
+
         request.session.modified = True
 
-        return JsonResponse({"events": [event.dict() for event in events]})
+        return JsonResponse({"events": normalized})
 
     except Exception as e:
-        print("Guest GPT failed:", e)
+        print("❌ Guest LLM failed:", e)
         return JsonResponse({"error": str(e)}, status=500)
-
-
