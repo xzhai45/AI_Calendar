@@ -63,8 +63,6 @@
                         </div>
                         <button type="submit" class="btn btn-sm btn-success w-100">Save</button>
                     </form>
-
-                    
                     <!-- AI Calendar Query Form -->
                     <div class="card mt-4 shadow-sm">
                         <div class="card-body">
@@ -90,7 +88,7 @@
         
 
         <!-- Calendar View -->
-        <div class="col-md-8">
+        <div class="{% if user.is_authenticated and calendars %}col-md-8{% else %}col-12{% endif %}">
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">My Schedule</h5>
@@ -100,7 +98,6 @@
                 </div>
             </div>
         </div>
-    </div>
 
     {% if user.is_authenticated %}
     <!-- Chat History and Suggested Events -->
