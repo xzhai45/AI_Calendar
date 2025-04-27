@@ -247,7 +247,7 @@ def ai_process_query(request):
     request.session.modified = True  # ensure session is saved
 
     def simulate_llm_generation(session_key, query, extracted_text=""):
-        print("🧵 simulate_llm_generation started")
+        print("simulate_llm_generation started")
 
         import os
         import time
