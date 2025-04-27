@@ -672,19 +672,6 @@
             });
         });
     });
-        function formatDateTime(isoString) {
-        const dt = new Date(isoString);
-        return `${dt.toLocaleDateString()}<br><small>${dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>`;
-    }
-
-    row.innerHTML = `
-        <td>${event.title}</td>
-        <td>${formatDateTime(event.start)}</td>
-        <td>${formatDateTime(event.end)}</td>
-        <td>${event.location}</td>
-        <td>${event.description}</td>
-    `;
-
     {% endif %}
     </script>        
     
