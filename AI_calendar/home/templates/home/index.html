@@ -135,6 +135,18 @@
             <div id="guest-ai-response" class="mt-2 d-none alert alert-info"></div>
         </div>
     </div>
+    <table id="guest-ai-table" class="table table-sm table-striped d-none mt-3">
+        <thead class="table-light">
+            <tr>
+                <th>Title</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Location</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
     {% endif %}
 
     </div>
@@ -579,61 +591,87 @@
     });
     {% endif %}
     </script>
-    <script> 
+    <script>
+    {% if not user.is_authenticated %}
     document.addEventListener("DOMContentLoaded", function () {
         const guestForm = document.getElementById("guest-ai-form");
         const guestResponse = document.getElementById("guest-ai-response");
+        const guestTable = document.getElementById("guest-ai-table");
+        const guestTableBody = guestTable.querySelector("tbody");
 
-        if (guestForm) {
-            guestForm.addEventListener("submit", function (e) {
-                e.preventDefault();
-
-                const query = document.getElementById("guest-ai-input").value.trim();
-                const file = document.getElementById("guest-ai-file").files[0];
-
-                if (!query && !file) {
-                    alert("Please enter a message or upload a PDF.");
-                    return;
-                }
-
-                const formData = new FormData();
-                formData.append("query", query);
-                if (file) formData.append("file", file);
-
-                fetch("/guest-ai-query/", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(res => res.json())
-                .then(data => {
-                    guestResponse.classList.remove("d-none");
-
-                    if (data.error) {
-                        guestResponse.classList.add("alert-danger");
-                        guestResponse.classList.remove("alert-info");
-                        guestResponse.innerText =  "" + data.error;
-                    } else if (data.events && data.events.length > 0) {
-                        guestResponse.classList.remove("alert-danger");
-                        guestResponse.classList.add("alert-info");
-                        guestResponse.innerHTML = data.events.map(ev => `
-                            <strong>${ev.title}</strong><br>
-                            ${ev.start} → ${ev.end}<br>
-                            ${ev.location}<br>
-                            ${ev.description}
-                        `).join("<hr>");
-                    } else {
-                        guestResponse.innerText = "No events detected.";
-                    }
-                })
-                .catch(err => {
-                    guestResponse.classList.remove("alert-info");
-                    guestResponse.classList.add("alert-danger");
-                    guestResponse.classList.remove("d-none");
-                    guestResponse.innerText = "Error: " + err;
-                });
-            });
+        function formatDateTime(isoString) {
+            const dt = new Date(isoString);
+            const date = dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+            const time = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            return `${date}<br><small>${time}</small>`;
         }
-    });
 
-    </script> 
+        guestForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const query = document.getElementById("guest-ai-input").value.trim();
+            const file = document.getElementById("guest-ai-file").files[0];
+
+            if (!query && !file) {
+                alert("Please enter a message or upload a PDF.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("query", query);
+            if (file) formData.append("file", file);
+
+            fetch("/guest-ai-query/", {
+                method: "POST",
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                guestResponse.classList.remove("d-none");
+
+                if (data.error) {
+                    guestResponse.classList.add("alert-danger");
+                    guestResponse.classList.remove("alert-info");
+                    guestResponse.innerText = "❌ " + data.error;
+                    guestTable.classList.add("d-none");
+                    guestTableBody.innerHTML = "";
+                } else if (data.events && data.events.length > 0) {
+                    guestResponse.classList.remove("alert-danger");
+                    guestResponse.classList.add("alert-info");
+                    guestResponse.innerText = "✅ Events successfully extracted:";
+
+                    guestTableBody.innerHTML = "";
+                    data.events.forEach(event => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${event.title}</td>
+                            <td>${formatDateTime(event.start)}</td>
+                            <td>${formatDateTime(event.end)}</td>
+                            <td>${event.location}</td>
+                            <td>${event.description}</td>
+                        `;
+                        guestTableBody.appendChild(row);
+                    });
+
+                    guestTable.classList.remove("d-none");
+                } else {
+                    guestResponse.classList.remove("alert-danger");
+                    guestResponse.classList.add("alert-info");
+                    guestResponse.innerText = "No events found.";
+                    guestTable.classList.add("d-none");
+                    guestTableBody.innerHTML = "";
+                }
+            })
+            .catch(err => {
+                guestResponse.classList.remove("alert-info");
+                guestResponse.classList.add("alert-danger");
+                guestResponse.classList.remove("d-none");
+                guestResponse.innerText = "❌ Error: " + err;
+                guestTable.classList.add("d-none");
+                guestTableBody.innerHTML = "";
+            });
+        });
+    });
+    {% endif %}
+    </script>
 {% endblock %}

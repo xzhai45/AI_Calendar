@@ -353,46 +353,52 @@ def guest_ai_query(request):
     if not query and not uploaded_file:
         return JsonResponse({"error": "Query or file required."}, status=400)
 
-    # Extract text from PDF file if provided
+    # Extract text from PDF file if present
     if uploaded_file and uploaded_file.name.endswith('.pdf'):
         try:
             pdf_reader = PyPDF2.PdfReader(BytesIO(uploaded_file.read()))
             for page in pdf_reader.pages:
-                extracted_text += page.extract_text() or ""
+                text = page.extract_text()
+                if text:
+                    extracted_text += text
         except Exception as e:
+            print("❌ PDF read error:", e)
             return JsonResponse({"error": f"PDF read error: {str(e)}"}, status=400)
 
-    # Run structured LLM extraction
     try:
-        from home.llm.event_llm import EventExtraction  # adjust path if needed
+        from home.llm.event_llm import EventExtraction
         extractor = EventExtraction()
-        instruction = query if query else None
 
+        instruction = query if query else None
+        print(f"🧠 Extracting events with query='{instruction}' and PDF content length={len(extracted_text)}")
         events = extractor.extract(instruction, extracted_text)
+
+        if not isinstance(events, list):
+            raise ValueError("LLM did not return a list of events")
 
         normalized = []
         for ev in events:
             normalized.append({
-                "title": ev["title"],
-                "start": ev["start"],
-                "end": ev["end"],
-                "location": ev["location"],
-                "description": ev["description"],
+                "title": ev.get("title", "Untitled"),
+                "start": ev.get("start", ""),
+                "end": ev.get("end", ""),
+                "location": ev.get("location", ""),
+                "description": ev.get("description", ""),
                 "backgroundColor": "#3788d8",
                 "calendarId": "primary",
                 "extendedProps": {
-                    "location": ev["location"],
-                    "description": ev["description"],
+                    "location": ev.get("location", ""),
+                    "description": ev.get("description", ""),
                     "creator": "",
                     "htmlLink": "",
                     "googleEventId": ""
                 }
             })
 
+        print(f"✅ {len(normalized)} events extracted.")
         request.session.modified = True
-
         return JsonResponse({"events": normalized})
 
     except Exception as e:
-        print("❌ Guest LLM failed:", e)
+        print("❌ Guest LLM extraction failed:", e)
         return JsonResponse({"error": str(e)}, status=500)
