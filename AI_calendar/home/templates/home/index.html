@@ -103,7 +103,7 @@
     <!-- Chat History and Suggested Events -->
     <div class="card mt-4 shadow-sm" id="chat-container">
         <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">🗂️ Chat History</h5>
+            <h5 class="mb-0">Chat History</h5>
         </div>
         <div class="card-body">
             <div id="chat-history" class="mb-3">
@@ -171,7 +171,7 @@
     }
     
     document.addEventListener('DOMContentLoaded', function () {
-        console.log("💡 DOM fully loaded. JS running.");
+        console.log("DOM fully loaded. JS running.");
         const aiForm = document.getElementById('ai-query-form');
         const aiResponseBox = document.getElementById('ai-response');
     
@@ -206,7 +206,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
-                    alert("❌ " + data.error);
+                    alert("! " + data.error);
                     return;
                 }
     
@@ -296,7 +296,7 @@
                         .then(response => response.json())
                         .then(data => {
                             if (data.error) {
-                                alert("❌ " + data.error);
+                                alert("! " + data.error);
                                 return;
                             }
                             fetch('/chat-history/')
@@ -394,7 +394,7 @@
                         manualForm.reset();
                         setTimeout(() => location.reload(), 1000);
                     } else {
-                        alert("❌ " + (data.error || "Failed to add event."));
+                        alert("! " + (data.error || "Failed to add event."));
                     }
                 })
                 .catch(err => {
@@ -406,7 +406,7 @@
     });
     
     function displayChatHistory(history) {
-        console.log("📜 Rendering chat history:", history);
+        console.log("Rendering chat history:", history);
         const container = document.getElementById("chat-history");
         container.innerHTML = "";
         history.forEach((entry, index) => {
@@ -514,7 +514,7 @@
                     if (!data.processing) {
                         clearInterval(pollInterval);
                         displaySuggestedEvents(data.suggested_events);
-                        document.getElementById("ai-response").textContent = "✅ New events received!";
+                        document.getElementById("ai-response").textContent = "New events received!";
                     } else {
                         console.log("LLM still generating...");
                     }
@@ -632,7 +632,7 @@
                 if (data.error) {
                     guestResponse.classList.add("alert-danger");
                     guestResponse.classList.remove("alert-info");
-                    guestResponse.innerText = "❌ " + data.error;
+                    guestResponse.innerText = "! " + data.error;
                     guestTable.classList.add("d-none");
                     guestTableBody.innerHTML = "";
                 } else if (data.events && data.events.length > 0) {
@@ -666,7 +666,7 @@
                 guestResponse.classList.remove("alert-info");
                 guestResponse.classList.add("alert-danger");
                 guestResponse.classList.remove("d-none");
-                guestResponse.innerText = "❌ Error: " + err;
+                guestResponse.innerText = "Error: " + err;
                 guestTable.classList.add("d-none");
                 guestTableBody.innerHTML = "";
             });
