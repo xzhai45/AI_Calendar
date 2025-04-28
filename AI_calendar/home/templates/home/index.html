@@ -176,12 +176,12 @@
         const aiResponseBox = document.getElementById('ai-response');
     
         if (!aiForm) {
-            console.error("❌ aiForm not found in DOM.");
+            console.error(" aiForm not found in DOM.");
             return;
         }
     
         aiForm.addEventListener('submit', function (e) {
-            console.log("📬 AI form submit triggered.");
+            console.log("AI form submit triggered.");
             e.preventDefault();
     
             const query = document.getElementById('ai-input').value.trim();
@@ -220,18 +220,18 @@
                     });
     
                 if (data.processing) {
-                    console.log("🧪 Starting pollSuggestedEvents...");
+                    console.log(" Starting pollSuggestedEvents...");
                     pollSuggestedEvents();
                 }
     
                 aiResponseBox.classList.remove('d-none');
-                aiResponseBox.textContent = "✅ Submitted. Waiting for AI to respond with events...";
+                aiResponseBox.textContent = "Submitted. Waiting for AI to respond with events...";
                 document.getElementById('ai-input').value = '';
                 document.getElementById('ai-file').value = '';
             })
             .catch(err => {
-                console.error("❌ Error submitting query:", err);
-                alert("❌ Error submitting query.");
+                console.error("Error submitting query:", err);
+                alert("Error submitting query.");
             });
         });
     
@@ -306,11 +306,11 @@
                                         displayChatHistory(data.history);
                                     }
                                 });
-                            alert("✅ Event deleted from Google Calendar.");
+                            alert("Event deleted from Google Calendar.");
                         })
                         .catch(error => {
-                            console.error("❌ Delete error:", error);
-                            alert("❌ Error deleting event.");
+                            console.error("Delete error:", error);
+                            alert("Error deleting event.");
                         });
                     }
                 }
@@ -368,7 +368,7 @@
                 const end = toRFC3339(endRaw);
     
                 if (new Date(start) >= new Date(end)) {
-                    alert("❌ End time must be after start time.");
+                    alert("End time must be after start time.");
                     return;
                 }
     
@@ -389,7 +389,7 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.message) {
-                        alert("✅ Event added to Google Calendar!");
+                        alert("Event added to Google Calendar!");
                         manualForm.classList.add('d-none');
                         manualForm.reset();
                         setTimeout(() => location.reload(), 1000);
@@ -398,8 +398,8 @@
                     }
                 })
                 .catch(err => {
-                    console.error("❌ Network error adding event:", err);
-                    alert("❌ Submission failed.");
+                    console.error("Network error adding event:", err);
+                    alert("Submission failed.");
                 });
             });
         }
@@ -505,7 +505,7 @@
     }
     
     function pollSuggestedEvents() {
-        console.log("🔁 pollSuggestedEvents() called");
+        console.log("pollSuggestedEvents() called");
         const pollInterval = setInterval(() => {
             fetch('/poll-llm-status/')
                 .then(res => res.json())
@@ -638,7 +638,7 @@
                 } else if (data.events && data.events.length > 0) {
                     guestResponse.classList.remove("alert-danger");
                     guestResponse.classList.add("alert-info");
-                    guestResponse.innerText = "✅ Events successfully extracted:";
+                    guestResponse.innerText = "Events successfully extracted:";
 
                     guestTableBody.innerHTML = "";
                     data.events.forEach(event => {

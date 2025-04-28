@@ -95,10 +95,14 @@ class ExtractInfo:
 
         instruction = (
             f"You extract calendar events from natural language. Today is {now}, {weekday}. "
+
             "Return structured JSON as: {\"events\": [ ... ]}. "
             "Return all times in yyyy-mm-ddThh:mm:ss format."
             "If nothing can be parsed, return an empty list inside: {\"events\": []}."
         )
+        print("Instruction: ", instruction)
+        print(now)
+        print(weekday)
 
         result = api_caller.get_events(instruction, text, EventTimeWrapper, False)
 
@@ -265,3 +269,19 @@ class EventExtraction:
     def print_events(self, events: list[Event]) -> None:
         for event in events:
             print(event.model_dump_json(indent=2))
+
+if __name__ == "__main__":
+    event_extraction = EventExtraction()
+
+    ######### Case 1: Text input only
+    text = "I have a meeting on this thusday at 2pm for 1 hour at Starbucks about the CS 2340 project."
+    event_list = event_extraction.extract(None, text)
+    
+    ########## Case 2: PDF input
+    # event_list = event_extraction.extract_from_pdf(None, "test_case_main.pdf")
+    # event_list = event_extraction.extract_from_pdf(None, "test_case_main_2.pdf")
+
+    ########## Case 3: PDF input with addtional text instructions
+    # event_list = event_extraction.extract_from_pdf("Get me event(s) on graph", "test_case_main.pdf")
+    # event_list = event_extraction.extract_from_pdf("Get me event(s) on dynamic programming", "test_case_main.pdf")
+    print(event_list)

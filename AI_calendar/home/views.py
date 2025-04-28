@@ -70,7 +70,7 @@ def add_event_to_google(request):
         }
 
         try:
-            print("🚨 Sending event to Google Calendar:", json.dumps(event, indent=2))
+            print("Sending event to Google Calendar:", json.dumps(event, indent=2))
             created_event = service.events().insert(calendarId='primary', body=event).execute()
 
             # Fetch back the full event to confirm saved values
@@ -130,7 +130,7 @@ def index(request):
 
     if request.user.is_authenticated:
         try:
-            print("🔍 Checking Google account and tokens for:", request.user.email)
+            print("Checking Google account and tokens for:", request.user.email)
             token = SocialToken.objects.get(account__user=request.user, account__provider='google')
 
             credentials = Credentials(
@@ -246,7 +246,7 @@ def ai_process_query(request):
     request.session.modified = True  # ensure session is saved
 
     def simulate_llm_generation(session_key, query, extracted_text=""):
-        print("🧵 simulate_llm_generation using EventExtraction class")
+        print("simulate_llm_generation using EventExtraction class")
 
         from django.contrib.sessions.backends.db import SessionStore
         from home.llm.event_llm import EventExtraction  # path based on your file location
@@ -285,10 +285,10 @@ def ai_process_query(request):
             session["chat_history"] = history
             session.save()
 
-            print("✅ Events saved to session")
+            print(" Events saved to session")
 
         except Exception as e:
-            print("❌ simulate_llm_generation failed:", str(e))
+            print(" simulate_llm_generation failed:", str(e))
             session = SessionStore(session_key=session_key)
             session["event_suggestions"] = []
             session["llm_processing"] = False
@@ -362,7 +362,7 @@ def guest_ai_query(request):
                 if text:
                     extracted_text += text
         except Exception as e:
-            print("❌ PDF read error:", e)
+            print("PDF read error:", e)
             return JsonResponse({"error": f"PDF read error: {str(e)}"}, status=400)
 
     try:
@@ -370,7 +370,7 @@ def guest_ai_query(request):
         extractor = EventExtraction()
 
         instruction = query if query else None
-        print(f"🧠 Extracting events with query='{instruction}' and PDF content length={len(extracted_text)}")
+        print(f"Extracting events with query='{instruction}' and PDF content length={len(extracted_text)}")
         events = extractor.extract(instruction, extracted_text)
 
         if not isinstance(events, list):
@@ -395,10 +395,10 @@ def guest_ai_query(request):
                 }
             })
 
-        print(f"✅ {len(normalized)} events extracted.")
+        print(f"{len(normalized)} events extracted.")
         request.session.modified = True
         return JsonResponse({"events": normalized})
 
     except Exception as e:
-        print("❌ Guest LLM extraction failed:", e)
+        print("Guest LLM extraction failed:", e)
         return JsonResponse({"error": str(e)}, status=500)
